@@ -53,6 +53,7 @@ export function DataTable<T extends { id?: string }>({
 
       {/* Table */}
       <div className="rounded-xl border border-[var(--admin-border)] overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
             <tr className="border-b border-[var(--admin-border)] bg-[var(--admin-input-bg)]">
@@ -94,6 +95,7 @@ export function DataTable<T extends { id?: string }>({
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   )

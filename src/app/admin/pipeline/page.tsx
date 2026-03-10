@@ -90,7 +90,7 @@ export default function PipelinePage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex items-center justify-center h-64" role="status" aria-label="Loading">
         <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
       </div>
     )
@@ -169,7 +169,7 @@ export default function PipelinePage() {
 
       <BlurFade delay={0.1} duration={0.4}>
         <DragDropContext onDragEnd={onDragEnd}>
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {stages.map((stage) => {
               const Icon = stage.icon
               const stageClients = clients.filter(

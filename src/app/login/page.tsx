@@ -42,7 +42,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#030712] flex flex-col items-center justify-center relative overflow-hidden">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center relative overflow-hidden">
       {/* Dot pattern background */}
       <DotPattern
         width={24}
@@ -71,18 +71,18 @@ export default function LoginPage() {
                 </div>
               </div>
               <div className="text-left">
-                <h1 className="text-2xl text-white font-semibold tracking-tight leading-none">
+                <h1 className="text-2xl text-foreground font-semibold tracking-tight leading-none">
                   Arvantis Tech
                 </h1>
               </div>
             </div>
-            <p className="text-[13px] text-slate-500 tracking-[0.15em] uppercase mt-1">AI-Powered Business Automation</p>
+            <p className="text-[13px] text-muted-foreground tracking-[0.15em] uppercase mt-1">AI-Powered Business Automation</p>
           </div>
         </BlurFade>
 
         {/* Form card with shine border */}
         <BlurFade delay={0.25} duration={0.5}>
-          <Card className="relative bg-[#080d19]/80 backdrop-blur-xl border-white/[0.04] ring-0 shadow-2xl shadow-blue-950/20">
+          <Card className="relative bg-card dark:bg-[#080d19]/80 backdrop-blur-xl border-border dark:border-white/[0.04] ring-0 shadow-2xl shadow-blue-950/20">
             <ShineBorder
               shineColor={["#3b82f6", "#6366f1", "#3b82f6"]}
               borderWidth={1}
@@ -91,18 +91,19 @@ export default function LoginPage() {
             <CardContent className="pt-2 pb-2 px-4 sm:px-6">
               {/* Section title with thin rule */}
               <div className="flex items-center gap-4 mb-6">
-                <h2 className="text-[15px] font-medium text-slate-300 whitespace-nowrap">Sign in to your account</h2>
-                <div className="flex-1 h-[1px] bg-gradient-to-r from-slate-700/60 to-transparent" />
+                <h2 className="text-[15px] font-medium text-foreground/80 whitespace-nowrap">Sign in to your account</h2>
+                <div className="flex-1 h-[1px] bg-gradient-to-r from-border to-transparent" />
               </div>
 
               <form onSubmit={handleLogin} className="space-y-5">
                 <div className="space-y-2">
-                  <Label className="text-[13px] text-slate-500 tracking-wide uppercase">Email</Label>
+                  <Label htmlFor="email" className="text-[13px] text-muted-foreground tracking-wide uppercase">Email</Label>
                   <Input
+                    id="email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="h-12 px-4 text-[15px] bg-white/[0.03] border-white/[0.06] rounded-xl text-white placeholder:text-slate-600 focus-visible:border-blue-500/40 focus-visible:ring-blue-500/10 focus-visible:bg-white/[0.05] transition-all duration-200"
+                    className="h-12 px-4 text-[15px] bg-input dark:bg-white/[0.03] border-border dark:border-white/[0.06] rounded-xl text-foreground placeholder:text-muted-foreground/60 focus-visible:border-blue-500/40 focus-visible:ring-blue-500/10 focus-visible:bg-white/[0.05] transition-all duration-200"
                     placeholder="you@firm.com"
                     required
                     autoComplete="email"
@@ -111,7 +112,7 @@ export default function LoginPage() {
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label className="text-[13px] text-slate-500 tracking-wide uppercase">Password</Label>
+                    <Label htmlFor="password" className="text-[13px] text-muted-foreground tracking-wide uppercase">Password</Label>
                     <button
                       type="button"
                       className="text-[12px] text-blue-500/70 hover:text-blue-400 transition-colors"
@@ -128,10 +129,11 @@ export default function LoginPage() {
                     </button>
                   </div>
                   <Input
+                    id="password"
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="h-12 px-4 text-[15px] bg-white/[0.03] border-white/[0.06] rounded-xl text-white placeholder:text-slate-600 focus-visible:border-blue-500/40 focus-visible:ring-blue-500/10 focus-visible:bg-white/[0.05] transition-all duration-200"
+                    className="h-12 px-4 text-[15px] bg-input dark:bg-white/[0.03] border-border dark:border-white/[0.06] rounded-xl text-foreground placeholder:text-muted-foreground/60 focus-visible:border-blue-500/40 focus-visible:ring-blue-500/10 focus-visible:bg-white/[0.05] transition-all duration-200"
                     placeholder="••••••••"
                     required
                     autoComplete="current-password"
@@ -161,7 +163,7 @@ export default function LoginPage() {
                 >
                   {loading ? (
                     <span className="flex items-center gap-2">
-                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                       </svg>
@@ -170,7 +172,7 @@ export default function LoginPage() {
                   ) : (
                     <span className="flex items-center gap-2">
                       Sign In
-                      <svg className="h-4 w-4 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <svg className="h-4 w-4 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
                       </svg>
                     </span>
@@ -178,7 +180,7 @@ export default function LoginPage() {
                 </ShimmerButton>
 
                 <div className="text-center mt-4">
-                  <p className="text-[13px] text-slate-500">
+                  <p className="text-[13px] text-muted-foreground">
                     Don&apos;t have an account?{' '}
                     <Link href="/signup" className="text-blue-400 hover:text-blue-300 transition-colors font-medium">
                       Sign up

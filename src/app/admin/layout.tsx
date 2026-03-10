@@ -1,6 +1,8 @@
 import { requireAdmin } from '@/lib/admin/auth'
 import { redirect } from 'next/navigation'
 import { AdminSidebar } from '@/components/admin/sidebar'
+import { SidebarProvider } from '@/components/admin/sidebar-context'
+import { AdminMain } from '@/components/admin/admin-main'
 
 export default async function AdminLayout({
   children,
@@ -14,13 +16,11 @@ export default async function AdminLayout({
   }
 
   return (
-    <div className="min-h-screen bg-[var(--admin-bg)]">
-      <AdminSidebar />
-      <main className="ml-64 min-h-screen">
-        <div className="p-8">
-          {children}
-        </div>
-      </main>
-    </div>
+    <SidebarProvider>
+      <div className="min-h-screen bg-[var(--admin-bg)]">
+        <AdminSidebar />
+        <AdminMain>{children}</AdminMain>
+      </div>
+    </SidebarProvider>
   )
 }

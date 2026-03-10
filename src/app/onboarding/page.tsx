@@ -94,7 +94,7 @@ export default function OnboardingPage() {
   const currentStepIndex = statusSteps.findIndex(s => s.id === status)
 
   return (
-    <div className="min-h-screen bg-[#030712] flex flex-col items-center relative overflow-hidden py-12">
+    <div className="min-h-screen bg-background flex flex-col items-center relative overflow-hidden py-12">
       <DotPattern
         width={24}
         height={24}
@@ -110,11 +110,11 @@ export default function OnboardingPage() {
           <div className="text-center mb-10">
             <div className="inline-flex items-center gap-3.5 mb-3">
               <Image src="/arvantis-logo.png" alt="Arvantis Tech" width={90} height={90} className="rounded-lg" />
-              <h1 className="text-2xl text-white font-semibold tracking-tight">
+              <h1 className="text-2xl text-foreground font-semibold tracking-tight">
                 Arvantis Tech
               </h1>
             </div>
-            <p className="text-[13px] text-slate-500 tracking-[0.15em] uppercase mt-1">Onboarding</p>
+            <p className="text-[13px] text-muted-foreground tracking-[0.15em] uppercase mt-1">Onboarding</p>
           </div>
         </BlurFade>
 
@@ -133,17 +133,17 @@ export default function OnboardingPage() {
                         ? 'bg-blue-500 border-blue-500 text-white'
                         : isCurrent
                         ? 'bg-blue-500/10 border-blue-500 text-blue-400'
-                        : 'bg-white/[0.02] border-white/[0.08] text-slate-600'
+                        : 'bg-muted/50 dark:bg-white/[0.02] border-border dark:border-white/[0.08] text-muted-foreground'
                     }`} aria-label={`Step ${i + 1}: ${step.label}`}>
                       {isCompleted ? <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" /> : <StepIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
                     </div>
                     <p className={`text-[10px] sm:text-[11px] mt-1.5 sm:mt-2 font-medium text-center ${
-                      isCompleted || isCurrent ? 'text-slate-300' : 'text-slate-600'
+                      isCompleted || isCurrent ? 'text-foreground/80' : 'text-muted-foreground'
                     }`}>{step.label}</p>
                   </div>
                   {i < statusSteps.length - 1 && (
                     <div className={`flex-1 h-[2px] mx-1 sm:mx-2 mt-[-18px] ${
-                      isCompleted ? 'bg-blue-500' : 'bg-white/[0.06]'
+                      isCompleted ? 'bg-blue-500' : 'bg-border dark:bg-white/[0.06]'
                     }`} />
                   )}
                 </div>
@@ -155,7 +155,7 @@ export default function OnboardingPage() {
         {/* Content based on status */}
         {status === 'pending_call' && (
           <BlurFade delay={0.3} duration={0.5}>
-            <Card className="relative bg-[#080d19]/80 backdrop-blur-xl border-white/[0.04] ring-0 shadow-2xl shadow-blue-950/20">
+            <Card className="relative bg-card dark:bg-[#080d19]/80 backdrop-blur-xl border-border dark:border-white/[0.04] ring-0 shadow-2xl shadow-blue-950/20">
               <ShineBorder
                 shineColor={["#3b82f6", "#6366f1", "#3b82f6"]}
                 borderWidth={1}
@@ -163,17 +163,17 @@ export default function OnboardingPage() {
               />
               <CardContent className="pt-6 pb-6">
                 <div className="text-center mb-8">
-                  <h2 className="text-2xl font-bold text-white mb-3">
+                  <h2 className="text-2xl font-bold text-foreground mb-3">
                     Let&apos;s Build Your AI Agents
                   </h2>
-                  <p className="text-slate-400 text-[15px] max-w-md mx-auto">
+                  <p className="text-muted-foreground text-[15px] max-w-md mx-auto">
                     Book a discovery call with our team. We&apos;ll map out your workflows and
                     start building your custom AI agents.
                   </p>
                 </div>
 
                 {/* Calendly Embed */}
-                <div className="relative rounded-xl overflow-hidden border border-white/[0.04]">
+                <div className="relative rounded-xl overflow-hidden border border-border dark:border-white/[0.04]">
                   <CalendlyWidget userName={userName} userEmail={userEmail} companyName={companyName} />
                 </div>
               </CardContent>
@@ -183,7 +183,7 @@ export default function OnboardingPage() {
 
         {status === 'call_booked' && (
           <BlurFade delay={0.3} duration={0.5}>
-            <Card className="relative bg-[#080d19]/80 backdrop-blur-xl border-white/[0.04] ring-0 shadow-2xl shadow-blue-950/20">
+            <Card className="relative bg-card dark:bg-[#080d19]/80 backdrop-blur-xl border-border dark:border-white/[0.04] ring-0 shadow-2xl shadow-blue-950/20">
               <ShineBorder
                 shineColor={["#3b82f6", "#6366f1", "#3b82f6"]}
                 borderWidth={1}
@@ -193,10 +193,10 @@ export default function OnboardingPage() {
                 <div className="w-16 h-16 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mx-auto mb-6">
                   <CheckCircle2 className="w-8 h-8 text-blue-400" />
                 </div>
-                <h2 className="text-2xl font-bold text-white mb-3">
+                <h2 className="text-2xl font-bold text-foreground mb-3">
                   Call Booked!
                 </h2>
-                <p className="text-slate-400 max-w-md mx-auto mb-8 leading-relaxed">
+                <p className="text-muted-foreground max-w-md mx-auto mb-8 leading-relaxed">
                   We&apos;re excited to talk with you. After our call, we&apos;ll start building your custom AI agent workflows. Expect delivery in under a week.
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-lg mx-auto">
@@ -205,9 +205,9 @@ export default function OnboardingPage() {
                     { label: 'Custom Build', desc: '3-5 business days' },
                     { label: 'Go Live', desc: 'Agents activate' },
                   ].map(item => (
-                    <div key={item.label} className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-4">
-                      <p className="text-sm font-medium text-white mb-1">{item.label}</p>
-                      <p className="text-xs text-slate-500">{item.desc}</p>
+                    <div key={item.label} className="bg-muted/50 dark:bg-white/[0.02] border border-border dark:border-white/[0.06] rounded-xl p-4">
+                      <p className="text-sm font-medium text-foreground mb-1">{item.label}</p>
+                      <p className="text-xs text-muted-foreground">{item.desc}</p>
                     </div>
                   ))}
                 </div>
@@ -218,7 +218,7 @@ export default function OnboardingPage() {
 
         {status === 'building' && (
           <BlurFade delay={0.3} duration={0.5}>
-            <Card className="relative bg-[#080d19]/80 backdrop-blur-xl border-white/[0.04] ring-0 shadow-2xl shadow-blue-950/20">
+            <Card className="relative bg-card dark:bg-[#080d19]/80 backdrop-blur-xl border-border dark:border-white/[0.04] ring-0 shadow-2xl shadow-blue-950/20">
               <ShineBorder
                 shineColor={["#3b82f6", "#6366f1", "#3b82f6"]}
                 borderWidth={1}
@@ -228,14 +228,14 @@ export default function OnboardingPage() {
                 <div className="w-16 h-16 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mx-auto mb-6">
                   <Loader2 className="w-8 h-8 text-blue-400 animate-spin" />
                 </div>
-                <h2 className="text-2xl font-bold text-white mb-3">
+                <h2 className="text-2xl font-bold text-foreground mb-3">
                   We&apos;re Building Your AI Agents
                 </h2>
-                <p className="text-slate-400 max-w-md mx-auto mb-8 leading-relaxed">
+                <p className="text-muted-foreground max-w-md mx-auto mb-8 leading-relaxed">
                   Our team is building your custom AI agent workflows right now. You&apos;ll receive an email when everything is ready to go.
                 </p>
                 <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-sm">
-                  <Wrench className="w-4 h-4" />
+                  <Wrench className="w-4 h-4" aria-hidden="true" />
                   Estimated: 3-5 business days
                 </div>
               </CardContent>
@@ -252,7 +252,7 @@ export default function OnboardingPage() {
                 router.push('/')
                 router.refresh()
               }}
-              className="text-[13px] text-slate-600 hover:text-slate-400 transition-colors"
+              className="text-[13px] text-muted-foreground hover:text-foreground/70 transition-colors"
             >
               Sign out
             </button>

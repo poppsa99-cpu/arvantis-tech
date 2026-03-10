@@ -114,7 +114,7 @@ function SignupForm() {
   }
 
   return (
-    <div className="min-h-screen bg-[#030712] flex flex-col items-center justify-center relative overflow-hidden py-12">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center relative overflow-hidden py-12">
       <DotPattern
         width={24}
         height={24}
@@ -136,19 +136,19 @@ function SignupForm() {
                 </div>
               </div>
               <div className="text-left">
-                <h1 className="text-2xl text-white font-semibold tracking-tight leading-none">
+                <h1 className="text-2xl text-foreground font-semibold tracking-tight leading-none">
                   Arvantis Tech
                 </h1>
               </div>
             </div>
             <p className="text-sm text-blue-400 tracking-[0.15em] uppercase mb-1">Step 4 of 4</p>
-            <p className="text-[13px] text-slate-500 tracking-[0.15em] uppercase mt-1">Create Your Account</p>
+            <p className="text-[13px] text-muted-foreground tracking-[0.15em] uppercase mt-1">Create Your Account</p>
           </div>
         </BlurFade>
 
         {/* Form card */}
         <BlurFade delay={0.25} duration={0.5}>
-          <Card className="relative bg-[#080d19]/80 backdrop-blur-xl border-white/[0.04] ring-0 shadow-2xl shadow-blue-950/20">
+          <Card className="relative bg-card dark:bg-[#080d19]/80 backdrop-blur-xl border-border dark:border-white/[0.04] ring-0 shadow-2xl shadow-blue-950/20">
             <ShineBorder
               shineColor={["#3b82f6", "#6366f1", "#3b82f6"]}
               borderWidth={1}
@@ -156,8 +156,8 @@ function SignupForm() {
             />
             <CardContent className="pt-2 pb-2">
               <div className="flex items-center gap-4 mb-6">
-                <h2 className="text-[15px] font-medium text-slate-300 whitespace-nowrap">Sign up</h2>
-                <div className="flex-1 h-[1px] bg-gradient-to-r from-slate-700/60 to-transparent" />
+                <h2 className="text-[15px] font-medium text-foreground/80 whitespace-nowrap">Sign up</h2>
+                <div className="flex-1 h-[1px] bg-gradient-to-r from-border to-transparent" />
               </div>
 
               {stripeSessionId && (
@@ -172,23 +172,25 @@ function SignupForm() {
               <form onSubmit={handleSignup} className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label className="text-[13px] text-slate-500 tracking-wide uppercase">Full Name</Label>
+                    <Label htmlFor="fullName" className="text-[13px] text-muted-foreground tracking-wide uppercase">Full Name</Label>
                     <Input
+                      id="fullName"
                       type="text"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
-                      className="h-11 px-4 text-[14px] bg-white/[0.03] border-white/[0.06] rounded-xl text-white placeholder:text-slate-600 focus-visible:border-blue-500/40 focus-visible:ring-blue-500/10 transition-all duration-200"
+                      className="h-11 px-4 text-[14px] bg-input dark:bg-white/[0.03] border-border dark:border-white/[0.06] rounded-xl text-foreground placeholder:text-muted-foreground/60 focus-visible:border-blue-500/40 focus-visible:ring-blue-500/10 transition-all duration-200"
                       placeholder="John Doe"
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-[13px] text-slate-500 tracking-wide uppercase">Company</Label>
+                    <Label htmlFor="company" className="text-[13px] text-muted-foreground tracking-wide uppercase">Company</Label>
                     <Input
+                      id="company"
                       type="text"
                       value={companyName}
                       onChange={(e) => setCompanyName(e.target.value)}
-                      className="h-11 px-4 text-[14px] bg-white/[0.03] border-white/[0.06] rounded-xl text-white placeholder:text-slate-600 focus-visible:border-blue-500/40 focus-visible:ring-blue-500/10 transition-all duration-200"
+                      className="h-11 px-4 text-[14px] bg-input dark:bg-white/[0.03] border-border dark:border-white/[0.06] rounded-xl text-foreground placeholder:text-muted-foreground/60 focus-visible:border-blue-500/40 focus-visible:ring-blue-500/10 transition-all duration-200"
                       placeholder="Acme Inc."
                       required
                     />
@@ -196,12 +198,13 @@ function SignupForm() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-[13px] text-slate-500 tracking-wide uppercase">Email</Label>
+                  <Label htmlFor="email" className="text-[13px] text-muted-foreground tracking-wide uppercase">Email</Label>
                   <Input
+                    id="email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="h-11 px-4 text-[14px] bg-white/[0.03] border-white/[0.06] rounded-xl text-white placeholder:text-slate-600 focus-visible:border-blue-500/40 focus-visible:ring-blue-500/10 transition-all duration-200"
+                    className="h-11 px-4 text-[14px] bg-input dark:bg-white/[0.03] border-border dark:border-white/[0.06] rounded-xl text-foreground placeholder:text-muted-foreground/60 focus-visible:border-blue-500/40 focus-visible:ring-blue-500/10 transition-all duration-200"
                     placeholder="you@company.com"
                     required
                     autoComplete="email"
@@ -210,12 +213,13 @@ function SignupForm() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label className="text-[13px] text-slate-500 tracking-wide uppercase">Password</Label>
+                    <Label htmlFor="password" className="text-[13px] text-muted-foreground tracking-wide uppercase">Password</Label>
                     <Input
+                      id="password"
                       type="password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="h-11 px-4 text-[14px] bg-white/[0.03] border-white/[0.06] rounded-xl text-white placeholder:text-slate-600 focus-visible:border-blue-500/40 focus-visible:ring-blue-500/10 transition-all duration-200"
+                      className="h-11 px-4 text-[14px] bg-input dark:bg-white/[0.03] border-border dark:border-white/[0.06] rounded-xl text-foreground placeholder:text-muted-foreground/60 focus-visible:border-blue-500/40 focus-visible:ring-blue-500/10 transition-all duration-200"
                       placeholder="••••••••"
                       required
                       autoComplete="new-password"
@@ -223,12 +227,13 @@ function SignupForm() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-[13px] text-slate-500 tracking-wide uppercase">Phone <span className="text-slate-600">(optional)</span></Label>
+                    <Label htmlFor="phone" className="text-[13px] text-muted-foreground tracking-wide uppercase">Phone <span className="text-muted-foreground/60">(optional)</span></Label>
                     <Input
+                      id="phone"
                       type="tel"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      className="h-11 px-4 text-[14px] bg-white/[0.03] border-white/[0.06] rounded-xl text-white placeholder:text-slate-600 focus-visible:border-blue-500/40 focus-visible:ring-blue-500/10 transition-all duration-200"
+                      className="h-11 px-4 text-[14px] bg-input dark:bg-white/[0.03] border-border dark:border-white/[0.06] rounded-xl text-foreground placeholder:text-muted-foreground/60 focus-visible:border-blue-500/40 focus-visible:ring-blue-500/10 transition-all duration-200"
                       placeholder="(555) 123-4567"
                       autoComplete="tel"
                     />
@@ -237,7 +242,7 @@ function SignupForm() {
 
                 {/* Niche Picker */}
                 <div className="space-y-3">
-                  <Label className="text-[13px] text-slate-500 tracking-wide uppercase">Select Your Industry</Label>
+                  <Label className="text-[13px] text-muted-foreground tracking-wide uppercase">Select Your Industry</Label>
                   <div className="grid grid-cols-3 sm:grid-cols-3 gap-2">
                     {niches.map((niche) => {
                       const isSelected = selectedNiche === niche.id
@@ -245,11 +250,12 @@ function SignupForm() {
                         <button
                           key={niche.id}
                           type="button"
+                          aria-pressed={isSelected}
                           onClick={() => setSelectedNiche(niche.id)}
                           className={`relative flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all duration-200 ${
                             isSelected
                               ? 'bg-blue-500/10 border-blue-500/30 text-blue-400'
-                              : 'bg-white/[0.02] border-white/[0.06] text-slate-500 hover:border-white/[0.1] hover:text-slate-300'
+                              : 'bg-muted/50 dark:bg-white/[0.02] border-border dark:border-white/[0.06] text-muted-foreground hover:border-border hover:text-foreground/70 dark:hover:border-white/[0.1] dark:hover:text-slate-300'
                           }`}
                         >
                           {isSelected && (
@@ -259,7 +265,7 @@ function SignupForm() {
                               duration={8}
                             />
                           )}
-                          <niche.icon className="w-5 h-5" />
+                          <niche.icon className="w-5 h-5" aria-hidden="true" />
                           <span className="text-[11px] font-medium">{niche.name}</span>
                         </button>
                       )
@@ -268,7 +274,7 @@ function SignupForm() {
                 </div>
 
                 {error && (
-                  <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-red-500/[0.06] border border-red-500/10">
+                  <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-red-500/[0.06] border border-red-500/10" role="alert">
                     <div className="w-1 h-1 rounded-full bg-red-400 mt-2 shrink-0" />
                     <p className="text-red-400/90 text-[13px] leading-relaxed">{error}</p>
                   </div>
@@ -286,7 +292,7 @@ function SignupForm() {
                 >
                   {loading ? (
                     <span className="flex items-center gap-2">
-                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                       </svg>
@@ -295,7 +301,7 @@ function SignupForm() {
                   ) : (
                     <span className="flex items-center gap-2">
                       Create Account
-                      <svg className="h-4 w-4 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <svg className="h-4 w-4 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
                       </svg>
                     </span>
@@ -303,7 +309,7 @@ function SignupForm() {
                 </ShimmerButton>
 
                 <div className="text-center mt-3">
-                  <p className="text-[13px] text-slate-500">
+                  <p className="text-[13px] text-muted-foreground">
                     Already have an account?{' '}
                     <Link href="/login" className="text-blue-400 hover:text-blue-300 transition-colors font-medium">
                       Sign in

@@ -307,7 +307,7 @@ export default function ClientsPage() {
 
       <BlurFade delay={0.1} duration={0.4}>
         {loading ? (
-          <div className="flex items-center justify-center h-64">
+          <div className="flex items-center justify-center h-64" role="status" aria-label="Loading">
             <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : (

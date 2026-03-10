@@ -61,7 +61,7 @@ const statusConfig: Record<string, { label: string; color: string; bgColor: stri
   past_due: { label: 'Payment Failed', color: 'text-amber-400', bgColor: 'bg-amber-500/[0.06] border-amber-500/20', icon: AlertTriangle },
   canceled: { label: 'Canceled', color: 'text-red-400', bgColor: 'bg-red-500/[0.06] border-red-500/15', icon: X },
   incomplete: { label: 'Setup Incomplete', color: 'text-amber-400', bgColor: 'bg-amber-500/[0.06] border-amber-500/20', icon: Clock },
-  paused: { label: 'Paused', color: 'text-slate-400', bgColor: 'bg-white/[0.02] border-white/[0.06]', icon: Pause },
+  paused: { label: 'Paused', color: 'text-muted-foreground', bgColor: 'bg-[var(--background-50)] border-[var(--card-border)]', icon: Pause },
 }
 
 /* ── Cancel reason → save offer mapping (billing agent brain §2.4) ── */
@@ -200,7 +200,7 @@ export default function BillingPage() {
   }
 
   const status = profile?.subscription_status || 'none'
-  const statusInfo = statusConfig[status] || { label: 'No Subscription', color: 'text-slate-500', bgColor: 'bg-white/[0.02] border-white/[0.06]', icon: Clock }
+  const statusInfo = statusConfig[status] || { label: 'No Subscription', color: 'text-muted-foreground', bgColor: 'bg-[var(--background-50)] border-[var(--card-border)]', icon: Clock }
   const StatusIcon = statusInfo.icon
 
   // Calculate tenure
@@ -225,12 +225,12 @@ export default function BillingPage() {
     : null
 
   return (
-    <div className="min-h-screen bg-[#030712] text-white">
+    <div className="min-h-screen bg-background text-foreground">
       <div className="fixed top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-amber-500/25 to-transparent z-50" />
       <DotPattern width={24} height={24} cr={0.8} className="text-slate-700/15 [mask-image:radial-gradient(600px_circle_at_center,white,transparent)]" />
 
       <nav className="relative z-10 max-w-3xl mx-auto px-6 pt-8">
-        <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-white transition-colors">
+        <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="w-4 h-4" />
           Back to dashboard
         </Link>
@@ -239,7 +239,7 @@ export default function BillingPage() {
       <div className="relative z-10 max-w-3xl mx-auto px-6 py-12">
         <BlurFade delay={0.1} duration={0.5}>
           <h1 className="text-2xl font-bold mb-2">Billing & Subscription</h1>
-          <p className="text-slate-500 text-sm mb-8">Manage your plan, payment method, and invoices.</p>
+          <p className="text-muted-foreground text-sm mb-8">Manage your plan, payment method, and invoices.</p>
         </BlurFade>
 
         {loading ? (
@@ -252,7 +252,7 @@ export default function BillingPage() {
             {/* ─── DUNNING BANNER — Escalating urgency (billing brain §1.4) ─── */}
             {isInDunning && (
               <BlurFade delay={0.12} duration={0.5}>
-                <div className={`rounded-xl p-5 flex items-start gap-3 ${
+                <div role="alert" className={`rounded-xl p-5 flex items-start gap-3 ${
                   failureCount >= 3
                     ? 'bg-red-500/[0.06] border border-red-500/20'
                     : 'bg-amber-500/[0.06] border border-amber-500/20'
@@ -262,24 +262,24 @@ export default function BillingPage() {
                     {failureCount === 1 && (
                       <>
                         <p className="text-sm font-medium text-amber-400 mb-1">Your last payment couldn&apos;t be processed</p>
-                        <p className="text-xs text-slate-400">This is usually a temporary issue. Please update your payment method to keep your AI agents running without interruption.</p>
+                        <p className="text-xs text-muted-foreground">This is usually a temporary issue. Please update your payment method to keep your AI agents running without interruption.</p>
                       </>
                     )}
                     {failureCount === 2 && (
                       <>
                         <p className="text-sm font-medium text-amber-400 mb-1">Action needed — your subscription is at risk</p>
-                        <p className="text-xs text-slate-400">We&apos;ve been unable to process your payment after multiple attempts. Update your payment method to avoid service interruption. Your AI agents are still running during this grace period.</p>
+                        <p className="text-xs text-muted-foreground">We&apos;ve been unable to process your payment after multiple attempts. Update your payment method to avoid service interruption. Your AI agents are still running during this grace period.</p>
                       </>
                     )}
                     {failureCount >= 3 && (
                       <>
                         <p className="text-sm font-medium text-red-400 mb-1">Final notice — your agents will be paused {graceDeadline ? `on ${graceDeadline.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : 'soon'}</p>
-                        <p className="text-xs text-slate-400">We don&apos;t want to lose you. Update your payment method now to keep everything running. All your custom workflows and configurations are safe.</p>
+                        <p className="text-xs text-muted-foreground">We don&apos;t want to lose you. Update your payment method now to keep everything running. All your custom workflows and configurations are safe.</p>
                       </>
                     )}
                     <button
                       onClick={openPortal}
-                      className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-white/[0.06] border border-white/[0.1] text-sm font-medium text-white hover:bg-white/[0.1] transition-colors"
+                      className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[var(--background-50)] border border-[var(--card-border)] text-sm font-medium text-foreground hover:bg-[var(--foreground-30)] transition-colors"
                     >
                       <CreditCard className="w-3.5 h-3.5" />
                       Update Payment Method
@@ -291,16 +291,16 @@ export default function BillingPage() {
 
             {/* ─── CURRENT PLAN CARD ─── */}
             <BlurFade delay={0.15} duration={0.5}>
-              <div className="relative bg-[#080d19]/80 border border-white/[0.04] rounded-2xl p-6">
+              <div className="relative bg-[var(--card-80)] border border-[var(--card-border)] rounded-2xl p-6">
                 <ShineBorder shineColor={["#3b82f6", "#6366f1", "#3b82f6"]} borderWidth={1} duration={12} />
                 <div className="flex items-start justify-between mb-6">
                   <div>
-                    <p className="text-xs text-slate-500 tracking-[0.15em] uppercase mb-1">Current Plan</p>
+                    <p className="text-xs text-muted-foreground tracking-[0.15em] uppercase mb-1">Current Plan</p>
                     <h2 className="text-xl font-bold">
                       {profile?.subscription_plan ? planNames[profile.subscription_plan] || profile.subscription_plan : 'No Plan'}
                     </h2>
                     {tenureMonths > 0 && (
-                      <p className="text-xs text-slate-500 mt-1">Member for {tenureMonths} month{tenureMonths !== 1 ? 's' : ''}</p>
+                      <p className="text-xs text-muted-foreground mt-1">Member for {tenureMonths} month{tenureMonths !== 1 ? 's' : ''}</p>
                     )}
                   </div>
                   <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border ${statusInfo.bgColor} ${statusInfo.color}`}>
@@ -311,19 +311,19 @@ export default function BillingPage() {
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
                   <div>
-                    <p className="text-xs text-slate-500 mb-1">Monthly Price</p>
+                    <p className="text-xs text-muted-foreground mb-1">Monthly Price</p>
                     <p className="text-lg font-semibold">
                       {currentPrice ? `$${currentPrice.toLocaleString()}/mo` : '—'}
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-slate-500 mb-1">Daily Cost</p>
+                    <p className="text-xs text-muted-foreground mb-1">Daily Cost</p>
                     <p className="text-lg font-semibold">
                       {currentPrice ? `$${Math.round(currentPrice / 30)}/day` : '—'}
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-slate-500 mb-1">Setup Fee</p>
+                    <p className="text-xs text-muted-foreground mb-1">Setup Fee</p>
                     <p className="text-lg font-semibold">
                       {profile?.setup_fee_paid ? (
                         <span className="flex items-center gap-1.5">
@@ -333,7 +333,7 @@ export default function BillingPage() {
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-slate-500 mb-1">Next Billing</p>
+                    <p className="text-xs text-muted-foreground mb-1">Next Billing</p>
                     <p className="text-lg font-semibold">
                       {profile?.current_period_end
                         ? new Date(profile.current_period_end).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -347,6 +347,7 @@ export default function BillingPage() {
                     <ShimmerButton
                       onClick={openPortal}
                       disabled={portalLoading}
+                      aria-label="Open Stripe billing portal"
                       shimmerColor="rgba(255,255,255,0.12)"
                       shimmerSize="0.06em"
                       shimmerDuration="2.5s"
@@ -372,7 +373,7 @@ export default function BillingPage() {
                   {(status === 'active' || status === 'trialing') && (
                     <button
                       onClick={() => setShowCancel(true)}
-                      className="h-11 px-5 rounded-xl text-sm text-slate-500 hover:text-slate-300 border border-white/[0.04] hover:border-white/[0.08] transition-all"
+                      className="h-11 px-5 rounded-xl text-sm text-muted-foreground hover:text-foreground border border-[var(--card-border)] hover:border-[var(--foreground-30)] transition-all"
                     >
                       Cancel Plan
                     </button>
@@ -390,8 +391,8 @@ export default function BillingPage() {
                       <TrendingUp className="w-5 h-5 text-blue-400" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-white">Upgrade to {planNames[nextPlan]}</p>
-                      <p className="text-xs text-slate-400">
+                      <p className="text-sm font-medium text-foreground">Upgrade to {planNames[nextPlan]}</p>
+                      <p className="text-xs text-muted-foreground">
                         Unlock more agents and priority features — ${planPrices[nextPlan].toLocaleString()}/mo
                       </p>
                     </div>
@@ -416,8 +417,8 @@ export default function BillingPage() {
                       <Calendar className="w-5 h-5 text-amber-400" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-white">Switch to annual & save ${annualSavings.toLocaleString()}</p>
-                      <p className="text-xs text-slate-400">
+                      <p className="text-sm font-medium text-foreground">Switch to annual & save ${annualSavings.toLocaleString()}</p>
+                      <p className="text-xs text-muted-foreground">
                         Get 2 months free — pay ${(currentPrice * 10).toLocaleString()}/yr instead of ${(currentPrice * 12).toLocaleString()}/yr
                       </p>
                     </div>
@@ -437,8 +438,8 @@ export default function BillingPage() {
               <BlurFade delay={0.2} duration={0.5}>
                 <div className="bg-blue-500/[0.04] border border-blue-500/15 rounded-xl p-6 text-center">
                   <CreditCard className="w-8 h-8 text-blue-400 mx-auto mb-3" />
-                  <p className="text-sm text-slate-300 mb-1">No active subscription</p>
-                  <p className="text-xs text-slate-500 mb-4">Get started with your AI agent team today.</p>
+                  <p className="text-sm text-muted-foreground mb-1">No active subscription</p>
+                  <p className="text-xs text-[var(--muted-dim)] mb-4">Get started with your AI agent team today.</p>
                   <Link
                     href="/pay"
                     className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-500 text-white text-sm font-medium hover:bg-blue-600 transition-colors"
@@ -453,8 +454,8 @@ export default function BillingPage() {
             {status === 'canceled' && (
               <BlurFade delay={0.2} duration={0.5}>
                 <div className="bg-gradient-to-br from-blue-500/[0.04] to-indigo-500/[0.04] border border-blue-500/15 rounded-xl p-6 text-center">
-                  <p className="text-sm text-slate-300 mb-2">Your subscription has been canceled.</p>
-                  <p className="text-xs text-slate-500 mb-4">
+                  <p className="text-sm text-muted-foreground mb-2">Your subscription has been canceled.</p>
+                  <p className="text-xs text-[var(--muted-dim)] mb-4">
                     Your custom AI agents and workflows are still saved. Reactivate anytime to pick up right where you left off.
                   </p>
                   <Link
@@ -470,14 +471,14 @@ export default function BillingPage() {
             {/* ─── CANCELLATION FLOW (billing brain §2.4 — max 5 steps) ─── */}
             {showCancel && (
               <BlurFade delay={0.1} duration={0.3}>
-                <div className="bg-[#080d19]/90 border border-white/[0.06] rounded-2xl p-6">
+                <div className="bg-background/90 border border-[var(--card-border)] rounded-2xl p-6">
                   <div className="flex items-center justify-between mb-5">
                     <h3 className="text-lg font-bold">
                       {showSaveOffer ? 'Before you go...' : 'We\'re sorry to see you go'}
                     </h3>
                     <button
                       onClick={() => { setShowCancel(false); setShowSaveOffer(false); setCancelReason(null) }}
-                      className="text-slate-500 hover:text-white transition-colors"
+                      className="text-muted-foreground hover:text-foreground transition-colors"
                     >
                       <X className="w-5 h-5" />
                     </button>
@@ -486,13 +487,13 @@ export default function BillingPage() {
                   {!showSaveOffer ? (
                     <>
                       {/* Step 1: Ask why */}
-                      <p className="text-sm text-slate-400 mb-4">Help us improve — what&apos;s the main reason you&apos;re considering canceling?</p>
-                      <div className="space-y-2">
+                      <p className="text-sm text-muted-foreground mb-4">Help us improve — what&apos;s the main reason you&apos;re considering canceling?</p>
+                      <div className="space-y-2" role="group" aria-label="Cancellation reasons">
                         {cancelReasons.map(reason => (
                           <button
                             key={reason.id}
                             onClick={() => handleCancelReasonSelect(reason.id)}
-                            className="w-full text-left px-4 py-3 rounded-xl border border-white/[0.04] bg-white/[0.02] hover:border-blue-500/30 hover:bg-blue-500/[0.04] transition-all text-sm text-slate-300"
+                            className="w-full text-left px-4 py-3 rounded-xl border border-[var(--card-border)] bg-[var(--background-50)] hover:border-blue-500/30 hover:bg-blue-500/[0.04] transition-all text-sm text-muted-foreground"
                           >
                             {reason.label}
                           </button>
@@ -512,8 +513,8 @@ export default function BillingPage() {
                                 <OfferIcon className="w-5 h-5 text-blue-400" />
                               </div>
                               <div>
-                                <p className="text-sm font-medium text-white mb-1">{offer.title}</p>
-                                <p className="text-xs text-slate-400 leading-relaxed mb-3">{offer.description}</p>
+                                <p className="text-sm font-medium text-foreground mb-1">{offer.title}</p>
+                                <p className="text-xs text-muted-foreground leading-relaxed mb-3">{offer.description}</p>
                                 <button
                                   onClick={() => handleSaveAction(offer.action)}
                                   className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-500 text-white text-sm font-medium hover:bg-blue-600 transition-colors"
@@ -527,10 +528,10 @@ export default function BillingPage() {
                       })()}
 
                       {/* Step 3: Confirm cancel */}
-                      <div className="border-t border-white/[0.04] pt-4">
+                      <div className="border-t border-[var(--card-border)] pt-4">
                         <button
                           onClick={confirmCancel}
-                          className="text-sm text-slate-500 hover:text-red-400 transition-colors"
+                          className="text-sm text-muted-foreground hover:text-red-400 transition-colors"
                         >
                           No thanks, proceed with cancellation →
                         </button>

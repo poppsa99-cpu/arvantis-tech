@@ -250,7 +250,7 @@ export default function LandingPage() {
             </div>
           </BlurFade>
 
-          <div className="grid grid-cols-3 sm:grid-cols-3 lg:grid-cols-3 gap-3 sm:gap-4 max-w-3xl mx-auto">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3 sm:gap-4 max-w-3xl mx-auto">
             {industries.map((ind, i) => (
               <BlurFade key={ind.name} delay={0.1 + i * 0.05} duration={0.5}>
                 <div className="group relative bg-[#080d19]/60 border border-white/[0.04] rounded-2xl p-5 sm:p-6 text-center hover:border-white/[0.08] transition-all duration-300">

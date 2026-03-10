@@ -82,15 +82,15 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#030712] flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div role="status" aria-label="Loading dashboard" className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
   if (!data) {
     return (
-      <div className="min-h-screen bg-[#030712] flex items-center justify-center text-slate-500">
+      <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground">
         Failed to load dashboard
       </div>
     )
@@ -100,7 +100,7 @@ export default function DashboardPage() {
   const currentStageIndex = onboardingSteps.findIndex((s) => s.id === data.onboarding_status)
 
   return (
-    <div className="min-h-screen bg-[#030712] text-white relative overflow-hidden">
+    <div className="min-h-screen bg-background text-foreground relative overflow-hidden">
       <DotPattern
         width={24}
         height={24}
@@ -123,7 +123,8 @@ export default function DashboardPage() {
                 router.push('/')
                 router.refresh()
               }}
-              className="flex items-center gap-2 text-sm text-slate-500 hover:text-white transition-colors"
+              aria-label="Sign out"
+              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               <LogOut className="w-4 h-4" />
               Sign out
@@ -136,7 +137,7 @@ export default function DashboardPage() {
           <h1 className="text-3xl font-bold mb-1">
             Welcome back{data.user.full_name ? `, ${data.user.full_name.split(' ')[0]}` : ''}
           </h1>
-          <p className="text-slate-400 mb-8">
+          <p className="text-muted-foreground mb-8">
             {data.user.company_name || 'Your AI agent command center'}
           </p>
         </BlurFade>
@@ -144,9 +145,9 @@ export default function DashboardPage() {
         {/* Onboarding Progress (only show if not fully active) */}
         {data.onboarding_status !== 'active' && (
           <BlurFade delay={0.2} duration={0.5}>
-            <Card className="relative bg-[#080d19]/80 border-white/[0.04] ring-0 mb-8">
+            <Card className="relative bg-[var(--card-80)] border-[var(--card-border)] ring-0 mb-8">
               <CardContent className="pt-5 pb-5">
-                <p className="text-xs text-slate-500 uppercase tracking-wider mb-4">Onboarding Progress</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-4">Onboarding Progress</p>
                 <div className="flex items-center gap-3">
                   {onboardingSteps.map((step, i) => {
                     const isCompleted = i < currentStageIndex
@@ -159,16 +160,16 @@ export default function DashboardPage() {
                               ? 'bg-blue-500 border-blue-500 text-white'
                               : isCurrent
                               ? 'bg-blue-500/10 border-blue-500 text-blue-400'
-                              : 'bg-white/[0.02] border-white/[0.08] text-slate-600'
+                              : 'bg-[var(--background-50)] border-[var(--card-border)] text-[var(--muted-dim)]'
                           }`}>
                             {isCompleted ? <CheckCircle2 className="w-4 h-4" /> : i + 1}
                           </div>
-                          <span className={`text-[10px] font-medium ${isCompleted || isCurrent ? 'text-slate-300' : 'text-slate-600'}`}>
+                          <span className={`text-[10px] font-medium ${isCompleted || isCurrent ? 'text-muted-foreground' : 'text-[var(--muted-dim)]'}`}>
                             {step.label}
                           </span>
                         </div>
                         {i < onboardingSteps.length - 1 && (
-                          <div className={`flex-1 h-[2px] mx-2 mt-[-16px] ${isCompleted ? 'bg-blue-500' : 'bg-white/[0.06]'}`} />
+                          <div className={`flex-1 h-[2px] mx-2 mt-[-16px] ${isCompleted ? 'bg-blue-500' : 'bg-[var(--card-border)]'}`} />
                         )}
                       </div>
                     )
@@ -184,17 +185,17 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Bot className="w-5 h-5 text-blue-400" />
-              <h2 className="text-lg font-semibold text-white">Your AI Agents</h2>
+              <h2 className="text-lg font-semibold text-foreground">Your AI Agents</h2>
             </div>
-            <span className="text-xs text-slate-500">{activeAgents} active / {data.agents.length} total</span>
+            <span className="text-xs text-muted-foreground">{activeAgents} active / {data.agents.length} total</span>
           </div>
 
           {data.agents.length === 0 ? (
-            <Card className="relative bg-[#080d19]/80 border-white/[0.04] ring-0">
+            <Card className="relative bg-[var(--card-80)] border-[var(--card-border)] ring-0">
               <CardContent className="py-12 text-center">
-                <Bot className="w-10 h-10 text-slate-600 mx-auto mb-3" />
-                <p className="text-slate-500 text-sm">No agents deployed yet</p>
-                <p className="text-slate-600 text-xs mt-1">Your agents will appear here once your account is set up</p>
+                <Bot className="w-10 h-10 text-[var(--muted-dim)] mx-auto mb-3" />
+                <p className="text-muted-foreground text-sm">No agents deployed yet</p>
+                <p className="text-[var(--muted-dim)] text-xs mt-1">Your agents will appear here once your account is set up</p>
               </CardContent>
             </Card>
           ) : (
@@ -206,7 +207,7 @@ export default function DashboardPage() {
                 const isAccessible = agent.status === 'active'
 
                 const cardContent = (
-                  <Card className={`relative bg-[#080d19]/80 border-white/[0.04] ring-0 transition-all group ${isAccessible ? 'hover:border-white/[0.12] hover:bg-[#0c1220]/80 cursor-pointer' : 'opacity-60 cursor-not-allowed'}`}>
+                  <Card className={`relative bg-[var(--card-80)] border-[var(--card-border)] ring-0 transition-all group ${isAccessible ? 'hover:border-[var(--foreground-30)] hover:bg-[var(--card-80)] cursor-pointer' : 'opacity-60 cursor-not-allowed'}`}>
                     {isAccessible && <ShineBorder shineColor={["#3b82f6", "#6366f1", "#3b82f6"]} borderWidth={1} duration={14} />}
                     <CardContent className="pt-5 pb-5">
                       <div className="flex items-start justify-between mb-3">
@@ -215,8 +216,8 @@ export default function DashboardPage() {
                             <Icon className={`w-5 h-5 ${status.color}`} />
                           </div>
                           <div>
-                            <h3 className={`text-sm font-semibold transition-colors ${isAccessible ? 'text-white group-hover:text-blue-400' : 'text-slate-400'}`}>{template?.display_name || 'Agent'}</h3>
-                            <p className="text-xs text-slate-500 mt-0.5">{template?.category || 'general'}</p>
+                            <h3 className={`text-sm font-semibold transition-colors ${isAccessible ? 'text-foreground group-hover:text-blue-400' : 'text-muted-foreground'}`}>{template?.display_name || 'Agent'}</h3>
+                            <p className="text-xs text-muted-foreground mt-0.5">{template?.category || 'general'}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -226,11 +227,11 @@ export default function DashboardPage() {
                             {agent.status === 'error' && <AlertTriangle className="w-3 h-3" />}
                             {status.label}
                           </span>
-                          {isAccessible && <ExternalLink className="w-3.5 h-3.5 text-slate-600 group-hover:text-blue-400 transition-colors" />}
+                          {isAccessible && <ExternalLink className="w-3.5 h-3.5 text-[var(--muted-dim)] group-hover:text-blue-400 transition-colors" />}
                         </div>
                       </div>
-                      <p className="text-xs text-slate-500 mb-3 line-clamp-2">{template?.description || ''}</p>
-                      <div className="flex items-center justify-between text-xs text-slate-600">
+                      <p className="text-xs text-muted-foreground mb-3 line-clamp-2">{template?.description || ''}</p>
+                      <div className="flex items-center justify-between text-xs text-[var(--muted-dim)]">
                         <div className="flex items-center gap-4">
                           <span>{agent.runs_count} runs</span>
                           {agent.last_run_at && (
@@ -274,16 +275,17 @@ export default function DashboardPage() {
           <div className="mt-10">
             <button
               onClick={() => setBillingOpen(!billingOpen)}
+              aria-expanded={billingOpen}
               className="flex items-center justify-between w-full mb-4 group"
             >
               <div className="flex items-center gap-2">
-                <CreditCard className="w-5 h-5 text-slate-500" />
-                <h2 className="text-lg font-semibold text-slate-400 group-hover:text-white transition-colors">Billing & Subscription</h2>
+                <CreditCard className="w-5 h-5 text-muted-foreground" />
+                <h2 className="text-lg font-semibold text-muted-foreground group-hover:text-foreground transition-colors">Billing & Subscription</h2>
               </div>
               {billingOpen ? (
-                <ChevronUp className="w-4 h-4 text-slate-500" />
+                <ChevronUp className="w-4 h-4 text-muted-foreground" />
               ) : (
-                <ChevronDown className="w-4 h-4 text-slate-500" />
+                <ChevronDown className="w-4 h-4 text-muted-foreground" />
               )}
             </button>
 
@@ -291,56 +293,56 @@ export default function DashboardPage() {
               <BlurFade delay={0.05} duration={0.3}>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* Plan Card */}
-                  <Card className="relative bg-[#080d19]/80 border-white/[0.04] ring-0">
+                  <Card className="relative bg-[var(--card-80)] border-[var(--card-border)] ring-0">
                     <CardContent className="pt-5 pb-5">
                       <div className="flex items-center gap-2 mb-3">
                         <CreditCard className="w-4 h-4 text-blue-400" />
-                        <span className="text-xs text-slate-500 uppercase tracking-wider">Your Plan</span>
+                        <span className="text-xs text-muted-foreground uppercase tracking-wider">Your Plan</span>
                       </div>
                       {data.subscription.plan ? (
                         <>
-                          <p className="text-xl font-bold text-white">
+                          <p className="text-xl font-bold text-foreground">
                             {planLabels[data.subscription.plan] || data.subscription.plan}
                           </p>
-                          <p className="text-sm text-slate-500 mt-0.5">
+                          <p className="text-sm text-muted-foreground mt-0.5">
                             ${planPrices[data.subscription.plan]?.toLocaleString() || 0}/mo
                           </p>
                         </>
                       ) : (
-                        <p className="text-sm text-slate-500">No active plan</p>
+                        <p className="text-sm text-muted-foreground">No active plan</p>
                       )}
                     </CardContent>
                   </Card>
 
                   {/* Status Card */}
-                  <Card className="relative bg-[#080d19]/80 border-white/[0.04] ring-0">
+                  <Card className="relative bg-[var(--card-80)] border-[var(--card-border)] ring-0">
                     <CardContent className="pt-5 pb-5">
                       <div className="flex items-center gap-2 mb-3">
                         <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                        <span className="text-xs text-slate-500 uppercase tracking-wider">Status</span>
+                        <span className="text-xs text-muted-foreground uppercase tracking-wider">Status</span>
                       </div>
-                      <p className="text-xl font-bold text-white capitalize">
+                      <p className="text-xl font-bold text-foreground capitalize">
                         {data.subscription.status || 'Inactive'}
                       </p>
-                      <p className="text-sm text-slate-500 mt-0.5">
+                      <p className="text-sm text-muted-foreground mt-0.5">
                         Setup fee: {data.subscription.setup_fee_paid ? 'Paid' : 'Pending'}
                       </p>
                     </CardContent>
                   </Card>
 
                   {/* Next Billing Card */}
-                  <Card className="relative bg-[#080d19]/80 border-white/[0.04] ring-0">
+                  <Card className="relative bg-[var(--card-80)] border-[var(--card-border)] ring-0">
                     <CardContent className="pt-5 pb-5">
                       <div className="flex items-center gap-2 mb-3">
                         <Calendar className="w-4 h-4 text-violet-400" />
-                        <span className="text-xs text-slate-500 uppercase tracking-wider">Next Billing</span>
+                        <span className="text-xs text-muted-foreground uppercase tracking-wider">Next Billing</span>
                       </div>
                       {data.subscription.current_period_end ? (
                         <>
-                          <p className="text-xl font-bold text-white">
+                          <p className="text-xl font-bold text-foreground">
                             {new Date(data.subscription.current_period_end).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                           </p>
-                          <p className="text-sm text-slate-500 mt-0.5">
+                          <p className="text-sm text-muted-foreground mt-0.5">
                             {(() => {
                               const days = Math.ceil((new Date(data.subscription.current_period_end).getTime() - Date.now()) / 86400000)
                               return days > 0 ? `${days} days away` : 'Due now'
@@ -348,7 +350,7 @@ export default function DashboardPage() {
                           </p>
                         </>
                       ) : (
-                        <p className="text-sm text-slate-500">&mdash;</p>
+                        <p className="text-sm text-muted-foreground">&mdash;</p>
                       )}
                     </CardContent>
                   </Card>
@@ -361,7 +363,7 @@ export default function DashboardPage() {
         {/* Footer */}
         <BlurFade delay={0.5} duration={0.5}>
           <div className="mt-12 text-center">
-            <p className="text-xs text-slate-600">
+            <p className="text-xs text-[var(--muted-dim)]">
               Need help? Contact your account manager or email support@arvantistech.com
             </p>
           </div>
