@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { execFile } from 'child_process'
 import { promisify } from 'util'
-import { writeFile, readFile, mkdir, rm } from 'fs/promises'
+import { writeFile, mkdir, rm, readdir } from 'fs/promises'
 import { join } from 'path'
 import { tmpdir } from 'os'
 import { randomUUID } from 'crypto'
@@ -10,41 +10,12 @@ import { randomUUID } from 'crypto'
 const execFileAsync = promisify(execFile)
 
 async function extractPdfText(buffer: Buffer): Promise<string> {
-  const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs')
-  const doc = await pdfjsLib.getDocument({ data: new Uint8Array(buffer) }).promise
-  const pages: string[] = []
-
-  for (let i = 1; i <= doc.numPages; i++) {
-    const page = await doc.getPage(i)
-    const content = await page.getTextContent()
-    const items = content.items as Array<{ str: string; transform: number[]; height: number }>
-
-    // Group text items by Y-coordinate to reconstruct lines
-    let lastY: number | null = null
-    let line = ''
-    const lines: string[] = []
-
-    for (const item of items) {
-      const y = Math.round(item.transform[5])
-      if (lastY !== null && Math.abs(y - lastY) > 3) {
-        // Y changed — new line
-        if (line.trim()) lines.push(line.trim())
-        line = item.str
-      } else {
-        // Same line — append with space if needed
-        if (line && item.str && !line.endsWith(' ') && !item.str.startsWith(' ')) {
-          line += ' '
-        }
-        line += item.str
-      }
-      lastY = y
-    }
-    if (line.trim()) lines.push(line.trim())
-
-    pages.push(lines.join('\n'))
-  }
-
-  return pages.join('\n\n')
+  // pdf-parse works in Node.js serverless without web workers
+  const { PDFParse } = await import('pdf-parse')
+  const parser = new PDFParse({ data: new Uint8Array(buffer) })
+  const result = await parser.getText()
+  parser.destroy()
+  return result.text
 }
 
 async function ocrPdf(buffer: Buffer): Promise<string> {
@@ -63,8 +34,6 @@ async function ocrPdf(buffer: Buffer): Promise<string> {
       pdfPath,
     ], { timeout: 120000 })
 
-    // Find all generated page images
-    const { readdir } = await import('fs/promises')
     const files = (await readdir(workDir))
       .filter(f => f.startsWith('page-') && f.endsWith('.png'))
       .sort()
@@ -118,7 +87,6 @@ export async function POST(request: NextRequest) {
 
       // If no text found, fall back to OCR (scanned PDF)
       if (!text.trim()) {
-        // No text layer found — fall back to OCR for scanned PDFs
         text = await ocrPdf(buffer)
       }
     } else {
