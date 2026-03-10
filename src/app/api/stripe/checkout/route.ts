@@ -28,13 +28,15 @@ export async function POST(request: NextRequest) {
       mode: 'subscription',
       payment_method_types: ['card'],
       line_items: [
-        // One-time setup fee (using pre-created Stripe price)
-        { price: setupPriceId, quantity: 1 },
-        // Subscription — monthly or annual (using pre-created Stripe price)
+        // Subscription — monthly or annual
         { price: subscriptionPriceId, quantity: 1 },
       ],
       subscription_data: {
         trial_period_days: 30,
+        // One-time setup fee charged on the first invoice
+        add_invoice_items: [
+          { price: setupPriceId, quantity: 1 },
+        ],
         metadata: {
           plan_id: planId,
           plan_name: plan.name,
