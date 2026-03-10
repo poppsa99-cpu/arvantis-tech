@@ -100,7 +100,7 @@ export default function AgentWorkspacePage() {
   const [activeView, setActiveView] = useState<'upload' | 'results'>('upload')
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null)
   const [selectedDocType, setSelectedDocType] = useState<DocType>('motion-to-strike')
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [dragOver, setDragOver] = useState(false)
   const [dark, setDark] = useState(true)
   const [expandedDefenses, setExpandedDefenses] = useState<Set<number>>(new Set())
@@ -426,15 +426,23 @@ export default function AgentWorkspacePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] flex">
-      {/* Sidebar */}
+    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] flex overflow-x-hidden">
+      {/* Mobile sidebar backdrop */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar — always fixed overlay on all screen sizes */}
       <aside
-        className={`${
-          sidebarOpen ? 'w-[280px]' : 'w-0'
-        } border-r border-[var(--card-border)] backdrop-blur-sm flex flex-col shrink-0 transition-all duration-300 ease-in-out overflow-hidden`}
-        style={{ backgroundColor: 'color-mix(in srgb, var(--card) 60%, transparent)' }}
+        className={`fixed top-0 left-0 h-full w-[280px] z-50 border-r border-[var(--card-border)] flex flex-col shrink-0 transition-transform duration-300 ease-in-out ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+        style={{ backgroundColor: 'color-mix(in srgb, var(--card) 98%, var(--background))' }}
       >
-        <div className="w-[280px]">
+        <div className="w-[280px] flex flex-col h-full">
         {/* Sidebar header */}
         <div className="h-16 border-b border-[var(--card-border)] flex items-center px-4 gap-3">
           <button
@@ -518,7 +526,7 @@ export default function AgentWorkspacePage() {
             </a>
 
             <a
-              href="/dashboard"
+              href="/billing"
               className="w-full text-left rounded-lg transition-all duration-200 px-3 py-2.5 text-[var(--foreground)] hover:bg-[var(--background-60)] flex items-start gap-3"
             >
               <div className="mt-0.5 shrink-0 text-[var(--muted-dim)]">
@@ -598,8 +606,8 @@ export default function AgentWorkspacePage() {
                 <img
                   src="/arvantis-logo.png"
                   alt="Arvantis Tech"
-                  width={80}
-                  height={80}
+                  width={160}
+                  height={160}
                   className="rounded-md opacity-90 hover:opacity-100 transition-opacity duration-300"
                 />
               </div>
@@ -609,25 +617,25 @@ export default function AgentWorkspacePage() {
         </div>
       </aside>
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0">
+      {/* Main content — always full width, sidebar overlays */}
+      <div className="w-full flex-1 flex flex-col min-w-0">
         {/* Top bar */}
-        <header className="h-16 border-b border-[var(--card-border)] bg-[var(--card-30)] backdrop-blur-sm flex items-center px-4 sm:px-6 shrink-0">
-          <div className="flex items-center gap-3 flex-1">
+        <header className="min-h-[56px] sm:h-16 border-b border-[var(--card-border)] bg-[var(--card-30)] backdrop-blur-sm flex flex-wrap items-center gap-2 px-3 sm:px-6 py-2 sm:py-0 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
             {/* Mobile hamburger */}
             <button
               onClick={() => setSidebarOpen(true)}
-              className={`${sidebarOpen ? 'hidden' : ''} p-2 -ml-2 rounded-lg text-[var(--foreground)] hover:bg-[var(--background-50)] transition-colors`}
+              className="p-2 -ml-1 rounded-lg text-[var(--foreground)] hover:bg-[var(--background-50)] transition-colors shrink-0"
               aria-label="Open menu"
             >
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
               </svg>
             </button>
-            <h1 className="text-lg font-semibold">
+            <h1 className="text-sm sm:text-lg font-semibold truncate">
               {SIDEBAR_ITEMS.find(i => i.id === selectedDocType)?.label}
             </h1>
-            <Badge variant="outline" className="text-[10px] uppercase tracking-wider font-semibold text-green-600 dark:text-green-400 border-green-500/30 bg-green-500/5">
+            <Badge variant="outline" className="text-[10px] uppercase tracking-wider font-semibold text-green-600 dark:text-green-400 border-green-500/30 bg-green-500/5 hidden sm:inline-flex">
               {selectedDocType === 'motion-to-strike' ? 'Active' : 'Coming Soon'}
             </Badge>
             <WorkflowTutorial
@@ -861,7 +869,7 @@ export default function AgentWorkspacePage() {
                                     </div>
                                   </div>
 
-                                  <div className="flex items-center gap-2 shrink-0 ml-4">
+                                  <div className="flex items-center gap-2 shrink-0 ml-auto sm:ml-4">
                                     {doc.status === 'done' && (
                                       <>
                                         <Button
@@ -976,11 +984,11 @@ export default function AgentWorkspacePage() {
                   {/* Case Info + Summary */}
                   <div className="relative overflow-hidden rounded-2xl border border-[var(--card-border)] bg-gradient-to-br from-[var(--card)] to-[var(--background)] shadow-lg dark:shadow-2xl">
                     <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-blue-500 to-blue-600" />
-                    <div className="p-6 pl-7">
+                    <div className="p-4 sm:p-6 pl-5 sm:pl-7">
                       {/* Header */}
-                      <div className="flex items-center justify-between mb-5">
-                        <h3 className="text-xl font-bold text-[var(--foreground)]">Case Information</h3>
-                        <span className="text-xs text-[var(--foreground-50)] font-mono bg-[var(--background)] px-3 py-1 rounded-full border border-[var(--card-border)]">{selectedDoc.fileName}</span>
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-5">
+                        <h3 className="text-lg sm:text-xl font-bold text-[var(--foreground)]">Case Information</h3>
+                        <span className="text-xs text-[var(--foreground-50)] font-mono bg-[var(--background)] px-3 py-1 rounded-full border border-[var(--card-border)] w-fit truncate max-w-[200px] sm:max-w-none">{selectedDoc.fileName}</span>
                       </div>
                       {/* Case metadata */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -1006,7 +1014,7 @@ export default function AgentWorkspacePage() {
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" />
                               </svg>
                             </div>
-                            <span style={{ fontSize: '32px', fontWeight: 700, lineHeight: 1, display: 'block', color: 'var(--foreground)', fontFamily: '"Times New Roman", Times, Georgia, serif' }}>{selectedDoc.result.summary.totalDefenses}</span>
+                            <span style={{ fontSize: 'clamp(24px, 5vw, 32px)', fontWeight: 700, lineHeight: 1, display: 'block', color: 'var(--foreground)', fontFamily: '"Times New Roman", Times, Georgia, serif' }}>{selectedDoc.result.summary.totalDefenses}</span>
                             <span style={{ fontSize: '11px', fontWeight: 700, marginTop: '8px', display: 'block', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'color-mix(in srgb, var(--foreground) 50%, transparent)' }}>Total Defenses</span>
                           </div>
                           {/* Matched */}
@@ -1016,7 +1024,7 @@ export default function AgentWorkspacePage() {
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                               </svg>
                             </div>
-                            <span className="text-green-700 dark:text-green-400" style={{ fontSize: '32px', fontWeight: 700, lineHeight: 1, display: 'block', fontFamily: '"Times New Roman", Times, Georgia, serif' }}>{selectedDoc.result.summary.matched}</span>
+                            <span className="text-green-700 dark:text-green-400" style={{ fontSize: 'clamp(24px, 5vw, 32px)', fontWeight: 700, lineHeight: 1, display: 'block', fontFamily: '"Times New Roman", Times, Georgia, serif' }}>{selectedDoc.result.summary.matched}</span>
                             <span className="text-green-700/70 dark:text-green-400/80" style={{ fontSize: '11px', fontWeight: 700, marginTop: '8px', display: 'block', textTransform: 'uppercase', letterSpacing: '0.15em' }}>Matched</span>
                           </div>
                           {/* Needs Review */}
@@ -1028,7 +1036,7 @@ export default function AgentWorkspacePage() {
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
                               </svg>
                             </div>
-                            <span className={selectedDoc.result.summary.flagged > 0 ? 'text-amber-700 dark:text-amber-400' : 'text-[var(--foreground-30)]'} style={{ fontSize: '32px', fontWeight: 700, lineHeight: 1, display: 'block', fontFamily: '"Times New Roman", Times, Georgia, serif' }}>{selectedDoc.result.summary.flagged}</span>
+                            <span className={selectedDoc.result.summary.flagged > 0 ? 'text-amber-700 dark:text-amber-400' : 'text-[var(--foreground-30)]'} style={{ fontSize: 'clamp(24px, 5vw, 32px)', fontWeight: 700, lineHeight: 1, display: 'block', fontFamily: '"Times New Roman", Times, Georgia, serif' }}>{selectedDoc.result.summary.flagged}</span>
                             <span className={selectedDoc.result.summary.flagged > 0 ? 'text-amber-700/70 dark:text-amber-400/80' : 'text-[var(--foreground-30)]'} style={{ fontSize: '11px', fontWeight: 700, marginTop: '8px', display: 'block', textTransform: 'uppercase', letterSpacing: '0.15em' }}>Needs Review</span>
                           </div>
                         </div>
@@ -1049,14 +1057,14 @@ export default function AgentWorkspacePage() {
                           <div className={`absolute top-0 left-0 w-1 h-full ${
                             def.flagged ? 'bg-amber-500' : 'bg-green-500'
                           }`} />
-                          <div className="p-5 pl-6">
-                            <div className="flex items-start justify-between mb-1">
-                              <h3 className="text-lg font-bold text-[var(--foreground)] tracking-tight">
+                          <div className="p-4 sm:p-5 pl-5 sm:pl-6">
+                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-0 mb-1">
+                              <h3 className="text-base sm:text-lg font-bold text-[var(--foreground)] tracking-tight">
                                 Defense #{def.defenseNumber} — {def.matchedCategory || def.suggestedCategory}
                               </h3>
                               <Badge
                                 variant="outline"
-                                className={`text-[10px] uppercase tracking-wider font-bold shrink-0 ml-3 ${
+                                className={`text-[10px] uppercase tracking-wider font-bold shrink-0 w-fit ${
                                   def.flagged
                                     ? 'text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-600/40 bg-amber-100 dark:bg-amber-500/10'
                                     : 'text-green-700 dark:text-green-400 border-green-300 dark:border-green-600/40 bg-green-100 dark:bg-green-500/10'

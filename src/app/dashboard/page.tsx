@@ -114,7 +114,7 @@ export default function DashboardPage() {
         <BlurFade delay={0.1} duration={0.5}>
           <div className="flex items-center justify-between mb-10">
             <div className="flex items-center gap-3">
-              <Image src="/arvantis-logo.png" alt="Arvantis Tech" width={40} height={40} className="rounded-lg" />
+              <Image src="/arvantis-logo.png" alt="Arvantis Tech" width={90} height={90} className="rounded-lg" />
               <span className="text-lg font-semibold">Arvantis Tech</span>
             </div>
             <button

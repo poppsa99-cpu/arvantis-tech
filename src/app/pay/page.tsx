@@ -156,6 +156,7 @@ export default function PayPage() {
   const [selectedTier, setSelectedTier] = useState<string>('growth')
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly')
   const [loading, setLoading] = useState(false)
+  const [checkoutError, setCheckoutError] = useState<string | null>(null)
   const [openFaq, setOpenFaq] = useState<number | null>(null)
   const isAnnual = billingCycle === 'annual'
 
@@ -166,6 +167,7 @@ export default function PayPage() {
   async function handleCheckout() {
     if (!selectedTier) return
     setLoading(true)
+    setCheckoutError(null)
 
     try {
       const res = await fetch('/api/stripe/checkout', {
@@ -179,11 +181,11 @@ export default function PayPage() {
       if (data.url) {
         window.location.href = data.url
       } else {
-        console.error('Checkout error:', data.error)
+        setCheckoutError(data.error || 'Failed to start checkout. Please try again.')
         setLoading(false)
       }
     } catch {
-      console.error('Failed to create checkout session')
+      setCheckoutError('Network error. Please check your connection and try again.')
       setLoading(false)
     }
   }
@@ -216,7 +218,7 @@ export default function PayPage() {
         <BlurFade delay={0.1} duration={0.5}>
           <div className="text-center mb-6">
             <div className="flex items-center justify-center gap-3 mb-6">
-              <Image src="/arvantis-logo.png" alt="Arvantis Tech" width={40} height={40} className="rounded-lg" />
+              <Image src="/arvantis-logo.png" alt="Arvantis Tech" width={90} height={90} className="rounded-lg" />
               <span className="text-lg font-semibold">Arvantis Tech</span>
             </div>
             <p className="text-sm text-blue-400 tracking-[0.15em] uppercase mb-4">Step 3 of 4</p>
@@ -566,6 +568,13 @@ export default function PayPage() {
                 </div>
               </div>
             </div>
+
+            {checkoutError && (
+              <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-red-500/[0.06] border border-red-500/10 mb-4" role="alert">
+                <div className="w-1.5 h-1.5 rounded-full bg-red-400 mt-1.5 shrink-0" />
+                <p className="text-red-400/90 text-[13px] leading-relaxed">{checkoutError}</p>
+              </div>
+            )}
 
             <ShimmerButton
               onClick={handleCheckout}

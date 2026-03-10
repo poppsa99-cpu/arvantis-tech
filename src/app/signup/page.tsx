@@ -170,7 +170,7 @@ function SignupForm() {
               )}
 
               <form onSubmit={handleSignup} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label className="text-[13px] text-slate-500 tracking-wide uppercase">Full Name</Label>
                     <Input
@@ -208,7 +208,7 @@ function SignupForm() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label className="text-[13px] text-slate-500 tracking-wide uppercase">Password</Label>
                     <Input
@@ -238,7 +238,7 @@ function SignupForm() {
                 {/* Niche Picker */}
                 <div className="space-y-3">
                   <Label className="text-[13px] text-slate-500 tracking-wide uppercase">Select Your Industry</Label>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-3 sm:grid-cols-3 gap-2">
                     {niches.map((niche) => {
                       const isSelected = selectedNiche === niche.id
                       return (
@@ -339,8 +339,8 @@ function SignupForm() {
             <Image
               src="/arvantis-logo.png"
               alt="Arvantis Tech"
-              width={100}
-              height={100}
+              width={196}
+              height={196}
               className="rounded-xl opacity-70 hover:opacity-90 transition-opacity duration-300"
               priority
             />

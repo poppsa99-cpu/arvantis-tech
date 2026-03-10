@@ -109,7 +109,7 @@ export default function OnboardingPage() {
         <BlurFade delay={0.1} duration={0.5}>
           <div className="text-center mb-10">
             <div className="inline-flex items-center gap-3.5 mb-3">
-              <Image src="/arvantis-logo.png" alt="Arvantis Tech" width={40} height={40} className="rounded-lg" />
+              <Image src="/arvantis-logo.png" alt="Arvantis Tech" width={90} height={90} className="rounded-lg" />
               <h1 className="text-2xl text-white font-semibold tracking-tight">
                 Arvantis Tech
               </h1>

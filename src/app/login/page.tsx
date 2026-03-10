@@ -52,13 +52,13 @@ export default function LoginPage() {
       />
 
       {/* Subtle radial ambient from top */}
-      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-[radial-gradient(ellipse_at_center,_rgba(59,130,246,0.05)_0%,_transparent_70%)] pointer-events-none z-0" />
+      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-[800px] h-[400px] bg-[radial-gradient(ellipse_at_center,_rgba(59,130,246,0.05)_0%,_transparent_70%)] pointer-events-none z-0" />
 
       {/* Thin gold accent line at top */}
       <div className="fixed top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-amber-500/25 to-transparent z-10" />
 
       {/* Content */}
-      <div className="relative z-10 w-full max-w-[420px] px-6">
+      <div className="relative z-10 w-full max-w-[420px] px-4 sm:px-6">
 
         {/* Brand mark */}
         <BlurFade delay={0.1} duration={0.5}>
@@ -88,7 +88,7 @@ export default function LoginPage() {
               borderWidth={1}
               duration={10}
             />
-            <CardContent className="pt-2 pb-2">
+            <CardContent className="pt-2 pb-2 px-4 sm:px-6">
               {/* Section title with thin rule */}
               <div className="flex items-center gap-4 mb-6">
                 <h2 className="text-[15px] font-medium text-slate-300 whitespace-nowrap">Sign in to your account</h2>
@@ -121,7 +121,7 @@ export default function LoginPage() {
                           redirectTo: `${window.location.origin}/login`,
                         })
                         if (resetError) setError(resetError.message)
-                        else setError('Password reset link sent — check your email')
+                        else setError('✓ Password reset link sent — check your email')
                       }}
                     >
                       Forgot password?
@@ -139,9 +139,13 @@ export default function LoginPage() {
                 </div>
 
                 {error && (
-                  <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-red-500/[0.06] border border-red-500/10">
-                    <div className="w-1 h-1 rounded-full bg-red-400 mt-2 shrink-0" />
-                    <p className="text-red-400/90 text-[13px] leading-relaxed">{error}</p>
+                  <div className={`flex items-start gap-2.5 px-4 py-3 rounded-xl ${
+                    error.startsWith('✓')
+                      ? 'bg-emerald-500/[0.06] border border-emerald-500/10'
+                      : 'bg-red-500/[0.06] border border-red-500/10'
+                  }`} role="alert">
+                    <div className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${error.startsWith('✓') ? 'bg-emerald-400' : 'bg-red-400'}`} />
+                    <p className={`text-[13px] leading-relaxed ${error.startsWith('✓') ? 'text-emerald-400/90' : 'text-red-400/90'}`}>{error}</p>
                   </div>
                 )}
 
@@ -197,9 +201,9 @@ export default function LoginPage() {
             <Image
               src="/arvantis-logo.png"
               alt="Arvantis Tech"
-              width={120}
-              height={120}
-              className="rounded-xl opacity-70 hover:opacity-90 transition-opacity duration-300"
+              width={220}
+              height={220}
+              className="rounded-xl opacity-80 hover:opacity-100 transition-opacity duration-300"
               priority
             />
           </div>

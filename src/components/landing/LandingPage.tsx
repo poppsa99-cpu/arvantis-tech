@@ -87,7 +87,7 @@ export default function LandingPage() {
       <nav className="fixed top-0 left-0 right-0 z-40 bg-[#030712]/80 backdrop-blur-xl border-b border-white/[0.04]">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3">
-            <Image src="/arvantis-logo.png" alt="Arvantis Tech" width={36} height={36} className="rounded-lg" />
+            <Image src="/arvantis-logo.png" alt="Arvantis Tech" width={80} height={80} className="rounded-lg" />
             <span className="text-lg font-semibold tracking-tight">Arvantis Tech</span>
           </Link>
           <div className="flex items-center gap-4">
@@ -436,7 +436,7 @@ export default function LandingPage() {
       <footer className="border-t border-white/[0.04] py-12 px-6">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-3">
-            <Image src="/arvantis-logo.png" alt="Arvantis Tech" width={32} height={32} className="rounded-lg" />
+            <Image src="/arvantis-logo.png" alt="Arvantis Tech" width={72} height={72} className="rounded-lg" />
             <span className="text-sm font-medium text-slate-400">Arvantis Tech</span>
           </div>
           <div className="flex items-center gap-6 text-sm text-slate-500">

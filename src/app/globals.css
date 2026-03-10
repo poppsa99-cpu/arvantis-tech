@@ -110,6 +110,17 @@
   --sidebar-border: oklch(0 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
 
+  /* Workspace theme tokens */
+  --card-border: rgba(0, 0, 0, 0.08);
+  --card-30: rgba(255, 255, 255, 0.3);
+  --card-80: rgba(255, 255, 255, 0.8);
+  --background-50: rgba(0, 0, 0, 0.04);
+  --background-60: rgba(0, 0, 0, 0.06);
+  --muted-dim: #94a3b8;
+  --foreground-30: rgba(15, 23, 42, 0.3);
+  --foreground-50: rgba(15, 23, 42, 0.5);
+  --foreground-60: rgba(15, 23, 42, 0.6);
+
   /* Admin theme tokens */
   --admin-bg: #f8fafc;
   --admin-card: rgba(255, 255, 255, 0.95);
@@ -152,6 +163,17 @@
   --sidebar-accent-foreground: #f9fafb;
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+
+  /* Workspace theme tokens — dark */
+  --card-border: rgba(255, 255, 255, 0.06);
+  --card-30: rgba(17, 24, 39, 0.3);
+  --card-80: rgba(17, 24, 39, 0.8);
+  --background-50: rgba(255, 255, 255, 0.04);
+  --background-60: rgba(255, 255, 255, 0.06);
+  --muted-dim: #64748b;
+  --foreground-30: rgba(249, 250, 251, 0.3);
+  --foreground-50: rgba(249, 250, 251, 0.5);
+  --foreground-60: rgba(249, 250, 251, 0.6);
 
   /* Admin theme tokens — dark */
   --admin-bg: #030712;

@@ -38,7 +38,7 @@ export function AdminSidebar() {
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r border-[var(--admin-border)] bg-[var(--admin-sidebar-bg)] flex flex-col">
       {/* Logo */}
       <div className="flex items-center gap-3 px-6 py-5 border-b border-[var(--admin-border)]">
-        <Image src="/arvantis-logo.png" alt="Arvantis" width={32} height={32} className="rounded-lg" />
+        <Image src="/arvantis-logo.png" alt="Arvantis" width={64} height={64} className="rounded-lg" />
         <div>
           <p className="text-sm font-semibold text-[var(--admin-text)]">Arvantis Tech</p>
           <p className="text-[11px] text-[var(--admin-text-dim)] tracking-wider uppercase">Admin</p>
