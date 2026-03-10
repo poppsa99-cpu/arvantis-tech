@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Link error:', error)
+    void error
     const message = error instanceof Error ? error.message : 'Failed to link payment'
     return NextResponse.json({ error: message }, { status: 500 })
   }

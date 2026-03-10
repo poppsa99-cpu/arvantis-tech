@@ -113,16 +113,16 @@ export default function BookPage() {
           {/* Right column — Calendly embed */}
           <div className="lg:col-span-3">
             <BlurFade delay={0.25} duration={0.5}>
-              <div className="relative bg-[#080d19]/60 border border-white/[0.04] rounded-2xl overflow-hidden">
+              <div className="relative bg-[#080d19]/60 border border-white/[0.04] rounded-2xl overflow-hidden h-[550px] sm:h-[650px] lg:h-[700px]">
                 <ShineBorder
                   shineColor={["#3b82f6", "#6366f1", "#3b82f6"]}
                   borderWidth={1}
                   duration={12}
                 />
                 <div
-                  className="calendly-inline-widget"
+                  className="calendly-inline-widget h-full"
                   data-url={process.env.NEXT_PUBLIC_CALENDLY_URL || 'https://calendly.com/arvantistech/30min'}
-                  style={{ minWidth: '320px', height: '700px' }}
+                  style={{ minWidth: '280px' }}
                 />
               </div>
             </BlurFade>

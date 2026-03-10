@@ -120,7 +120,7 @@ export default function OnboardingPage() {
 
         {/* Progress Stepper */}
         <BlurFade delay={0.2} duration={0.5}>
-          <div className="flex items-center justify-center gap-0 mb-12 max-w-lg mx-auto">
+          <div className="flex items-center justify-center gap-0 mb-12 max-w-lg mx-auto px-2">
             {statusSteps.map((step, i) => {
               const isCompleted = i < currentStepIndex
               const isCurrent = i === currentStepIndex
@@ -128,21 +128,21 @@ export default function OnboardingPage() {
               return (
                 <div key={step.id} className="flex items-center flex-1 last:flex-none">
                   <div className="flex flex-col items-center">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all ${
+                    <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border-2 transition-all ${
                       isCompleted
                         ? 'bg-blue-500 border-blue-500 text-white'
                         : isCurrent
                         ? 'bg-blue-500/10 border-blue-500 text-blue-400'
                         : 'bg-white/[0.02] border-white/[0.08] text-slate-600'
-                    }`}>
-                      {isCompleted ? <CheckCircle2 className="w-5 h-5" /> : <StepIcon className="w-4 h-4" />}
+                    }`} aria-label={`Step ${i + 1}: ${step.label}`}>
+                      {isCompleted ? <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" /> : <StepIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
                     </div>
-                    <p className={`text-[11px] mt-2 font-medium ${
+                    <p className={`text-[10px] sm:text-[11px] mt-1.5 sm:mt-2 font-medium text-center ${
                       isCompleted || isCurrent ? 'text-slate-300' : 'text-slate-600'
                     }`}>{step.label}</p>
                   </div>
                   {i < statusSteps.length - 1 && (
-                    <div className={`flex-1 h-[2px] mx-2 mt-[-18px] ${
+                    <div className={`flex-1 h-[2px] mx-1 sm:mx-2 mt-[-18px] ${
                       isCompleted ? 'bg-blue-500' : 'bg-white/[0.06]'
                     }`} />
                   )}

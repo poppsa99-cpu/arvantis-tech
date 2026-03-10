@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ url: session.url })
   } catch (error) {
-    console.error('Checkout error:', error)
+    void error
     const message = error instanceof Error ? error.message : 'Failed to create checkout session'
     return NextResponse.json({ error: message }, { status: 500 })
   }

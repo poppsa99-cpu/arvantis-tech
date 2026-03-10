@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
 
       // If no text found, fall back to OCR (scanned PDF)
       if (!text.trim()) {
-        console.log('No text layer found in PDF, falling back to OCR...')
+        // No text layer found — fall back to OCR for scanned PDFs
         text = await ocrPdf(buffer)
       }
     } else {
@@ -127,7 +127,6 @@ export async function POST(request: NextRequest) {
       text = result.value
     }
   } catch (err) {
-    console.error('Extract error:', err)
     return NextResponse.json(
       { error: `Failed to extract text: ${err instanceof Error ? err.message : String(err)}` },
       { status: 422 }

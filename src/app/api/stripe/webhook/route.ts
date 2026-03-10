@@ -16,13 +16,12 @@ export async function POST(request: NextRequest) {
   try {
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
     if (!webhookSecret) {
-      console.error('STRIPE_WEBHOOK_SECRET is not configured')
+      // STRIPE_WEBHOOK_SECRET missing
       return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 })
     }
     event = getStripe().webhooks.constructEvent(body, signature, webhookSecret)
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Webhook signature verification failed'
-    console.error('Webhook error:', message)
     return NextResponse.json({ error: message }, { status: 400 })
   }
 
@@ -60,7 +59,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ received: true })
   } catch (error) {
-    console.error('Webhook handler error:', error)
+    void error
     return NextResponse.json({ error: 'Webhook handler failed' }, { status: 500 })
   }
 }
@@ -72,7 +71,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   const subscriptionId = session.subscription as string
 
   if (!userId) {
-    console.log('Checkout completed without user_id — will be linked on signup')
+    // No user_id — will be linked on signup
     return
   }
 
@@ -215,6 +214,6 @@ async function logBillingEvent(event: Stripe.Event) {
       })
   } catch {
     // Don't fail the webhook if logging fails
-    console.error('Failed to log billing event')
+    // Failed to log billing event — non-blocking
   }
 }
