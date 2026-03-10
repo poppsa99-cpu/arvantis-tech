@@ -10,12 +10,10 @@ import { randomUUID } from 'crypto'
 const execFileAsync = promisify(execFile)
 
 async function extractPdfText(buffer: Buffer): Promise<string> {
-  // pdf-parse works in Node.js serverless without web workers
-  const { PDFParse } = await import('pdf-parse')
-  const parser = new PDFParse({ data: new Uint8Array(buffer) })
-  const result = await parser.getText()
-  parser.destroy()
-  return result.text
+  // unpdf works in serverless environments (Vercel, Cloudflare) without web workers
+  const { extractText } = await import('unpdf')
+  const { text } = await extractText(new Uint8Array(buffer))
+  return Array.isArray(text) ? text.join('\n\n') : text
 }
 
 async function ocrPdf(buffer: Buffer): Promise<string> {
