@@ -12,7 +12,7 @@ export function AdminMain({ children }: { children: ReactNode }) {
         collapsed ? 'ml-0 md:ml-[68px]' : 'ml-0 md:ml-64'
       }`}
     >
-      <div className="p-4 md:p-8">
+      <div className="p-4 pt-16 md:pt-8 md:p-8">
         {children}
       </div>
     </main>
