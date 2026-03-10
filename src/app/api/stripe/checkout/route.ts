@@ -24,19 +24,27 @@ export async function POST(request: NextRequest) {
       ? plan.annualPriceId
       : plan.priceId
 
-    const session = await getStripe().checkout.sessions.create({
+    const stripe = getStripe()
+
+    // Create an inline one-time price for the setup fee
+    const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       payment_method_types: ['card'],
       line_items: [
-        // Subscription — monthly or annual
+        // One-time setup fee
+        {
+          price_data: {
+            currency: 'usd',
+            product_data: { name: 'Done-For-You Setup' },
+            unit_amount: 150000, // $1,500
+          },
+          quantity: 1,
+        },
+        // Recurring subscription
         { price: subscriptionPriceId, quantity: 1 },
       ],
       subscription_data: {
         trial_period_days: 30,
-        // One-time setup fee charged on the first invoice
-        add_invoice_items: [
-          { price: setupPriceId, quantity: 1 },
-        ],
         metadata: {
           plan_id: planId,
           plan_name: plan.name,
