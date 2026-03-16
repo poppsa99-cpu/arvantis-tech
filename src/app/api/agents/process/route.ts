@@ -103,20 +103,20 @@ export async function POST(request: NextRequest) {
 // --- Fallback metadata extractors from raw PDF text ---
 
 function extractCaseNumber(text: string): string | null {
-  // Common Florida case number patterns
+  // IMPORTANT: use [- ] not [-\s] to prevent matching across newlines
   const patterns = [
-    // "Case No.: 2024-CA-123456" or "CASE NO. 24-CA-12345"
-    /case\s*no\.?\s*:?\s*([0-9]{2,4}[-\s]*[A-Z]{1,4}[-\s]*[0-9]{3,8})/i,
-    // "Case No: 24-012345-CI-01"
-    /case\s*no\.?\s*:?\s*([0-9]{2,4}[-\s]*[0-9]{3,8}[-\s]*[A-Z]{1,4}(?:[-\s]*[0-9]{1,3})?)/i,
-    // "Case #24CA12345"
-    /case\s*#\s*([0-9]{2,4}\s*[A-Z]{1,4}\s*[0-9]{3,8})/i,
-    // Standalone pattern: "24-CA-012345" on its own line
-    /\b(\d{2,4}-[A-Z]{1,4}-\d{3,8}(?:-\d{1,3})?)\b/,
-    // "CASE NUMBER" header followed by value
-    /case\s*number\s*:?\s*([^\n,;]{5,30})/i,
-    // Division patterns: "DIVISION: XX" near case number
-    /(\d{2,4}[-\s]*(?:CA|CC|CL|CI|CF|DR|SC|CP|AP|CJ)[-\s]*\d{3,8})/i,
+    // "CASE NO.: 26000007CAAXMX" (no dashes, concatenated)
+    /case\s*no\.?\s*:?\s*(\d{4,}[A-Z]{2,}[A-Z0-9]*)/i,
+    // "CASE NO.: CA26-0146" (alpha prefix)
+    /case\s*no\.?\s*:?\s*([A-Z]{2}\d{2}-\d{3,})/i,
+    // "Case No.: 2025-CA-011838-O" or "53-2025-CC-005105-A000-BA"
+    /case\s*no\.?\s*:?\s*(\d{1,4}-[A-Z]{1,4}-\d{3,}(?:-[A-Z0-9]+)*)/i,
+    // "CASE NO.: 2025 CA 010525-O" (spaces instead of dashes)
+    /case\s*no\.?\s*:?\s*(\d{2,4} [A-Z]{2} \d{3,}(?:-[A-Z0-9]+)*)/i,
+    // "052025CA026671XXCABC" (no separators)
+    /case\s*no\.?\s*:?\s*(\d{6,}[A-Z]{2,}[A-Z0-9]*)/i,
+    // Generic: CASE NO followed by alphanumeric+dash (no newlines)
+    /case\s*no\.?\s*:?\s*([\dA-Z][\dA-Z-]+[\dA-Z])/i,
   ]
 
   for (const pattern of patterns) {
@@ -136,14 +136,28 @@ function extractPartyName(text: string, role: 'plaintiff' | 'defendant'): string
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].toUpperCase()
     if (role === 'plaintiff' && /\bPLAINTIFF/.test(line)) {
-      // Name is usually on the line above
-      if (i > 0 && lines[i - 1].length > 2 && !/case|court|circuit|county|division|no\./i.test(lines[i - 1])) {
-        return lines[i - 1].replace(/[,.]$/, '').trim()
+      // Collect name lines above the "Plaintiff" label (may span multiple lines)
+      const nameLines: string[] = []
+      for (let j = i - 1; j >= Math.max(0, i - 5); j--) {
+        const prev = lines[j]
+        if (!prev || prev.length < 3) break
+        if (/case|court|circuit|county|division|no\.|filing|v\./i.test(prev)) break
+        nameLines.unshift(prev.replace(/[,.]$/, '').trim())
+      }
+      if (nameLines.length > 0) {
+        return nameLines.join(' ').replace(/\s+/g, ' ').replace(/\s*,\s*$/, '')
       }
     }
     if (role === 'defendant' && /\bDEFENDANT/.test(line)) {
-      if (i > 0 && lines[i - 1].length > 2 && !/case|court|circuit|county|division|no\.|v\./i.test(lines[i - 1])) {
-        return lines[i - 1].replace(/[,.]$/, '').trim()
+      const nameLines: string[] = []
+      for (let j = i - 1; j >= Math.max(0, i - 5); j--) {
+        const prev = lines[j]
+        if (!prev || prev.length < 3) break
+        if (/case|court|circuit|county|division|no\.|filing|v\./i.test(prev)) break
+        nameLines.unshift(prev.replace(/[,.]$/, '').trim())
+      }
+      if (nameLines.length > 0) {
+        return nameLines.join(' ').replace(/\s+/g, ' ').replace(/\s*,\s*$/, '')
       }
     }
   }
