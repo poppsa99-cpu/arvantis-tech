@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
   //   "Defendant's Affirmative Defense" (no ordinal)
   //   "Defendant's 1st Affirmative Defense" (numeric ordinal)
   // Replace ALL of these with the correct ordinal for the defense being reassigned
-  let responseText = defaultDefense.defense_text
+  let responseText = normalizeDefenseText(defaultDefense.defense_text)
   if (ordinal) {
     // Match "Defendant's [optional ordinal word(s)] Affirmative Defense"
     // Covers: First, Second, Third, 1st, 2nd, etc., or no ordinal at all
@@ -97,4 +97,51 @@ export async function POST(request: NextRequest) {
     matchedCategory: category.name,
     responseText,
   })
+}
+
+// Normalize DB defense text: collapse soft-wrapped \n\n into spaces,
+// preserve indented lines as [BLOCKQUOTE] markers for block quotes
+function normalizeDefenseText(rawText: string): string {
+  const lines = rawText.replace(/\r\n/g, '\n').split('\n')
+  const segments: { type: 'text' | 'blockquote'; content: string }[] = []
+  let currentText: string[] = []
+  let currentBlock: string[] = []
+
+  function flushText() {
+    if (currentText.length > 0) {
+      segments.push({ type: 'text', content: currentText.join(' ').replace(/  +/g, ' ').trim() })
+      currentText = []
+    }
+  }
+  function flushBlock() {
+    if (currentBlock.length > 0) {
+      segments.push({ type: 'blockquote', content: currentBlock.join(' ').replace(/  +/g, ' ').trim() })
+      currentBlock = []
+    }
+  }
+
+  for (const line of lines) {
+    const trimmed = line.trimEnd()
+    if (trimmed === '') continue
+    if (line.startsWith(' ') && trimmed.length > 10) {
+      flushText()
+      currentBlock.push(trimmed.trim())
+    } else {
+      flushBlock()
+      currentText.push(trimmed.trim())
+    }
+  }
+  flushText()
+  flushBlock()
+
+  const parts: string[] = []
+  for (const seg of segments) {
+    if (seg.content.length === 0) continue
+    if (seg.type === 'blockquote') {
+      parts.push('\n\n[BLOCKQUOTE]' + seg.content + '[/BLOCKQUOTE]\n\n')
+    } else {
+      parts.push(seg.content)
+    }
+  }
+  return parts.join(' ').replace(/  +/g, ' ').trim()
 }

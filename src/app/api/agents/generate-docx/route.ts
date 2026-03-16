@@ -197,40 +197,33 @@ function buildReplyDocument(result: ProcessResult): Document {
     if (def.matched && def.responseText) {
       const cleaned = cleanResponseText(def.responseText)
 
-      // Split into paragraphs if the response has double newlines
-      const paragraphs = cleaned.split(/\n\n+/).filter(p => p.trim())
-      let prevEndedWithColonOrSemicolon = false
+      // Split on [BLOCKQUOTE] markers — odd indices are block quotes
+      const blockParts = cleaned.split(/\[BLOCKQUOTE\]|\[\/BLOCKQUOTE\]/)
+      let isFirst = true
 
-      for (let i = 0; i < paragraphs.length; i++) {
-        const text = paragraphs[i].replace(/\n/g, ' ').trim()
+      for (let p = 0; p < blockParts.length; p++) {
+        const part = blockParts[p].replace(/\n/g, ' ').replace(/  +/g, ' ').trim()
+        if (!part) continue
 
-        // Block quote detection:
-        // If previous paragraph ended with : or ; the following text is a block quote
-        // Also catches enumerated items like (1), (2), a., b. that follow
-        const looksLikeEnumerated = /^\(\d+\)|^§\s*\d|^\d+\.\d+\s|^[a-z]\.\s/.test(text)
-        const isBlockQuote = prevEndedWithColonOrSemicolon || (i > 0 && looksLikeEnumerated)
+        const isBlockQuote = p % 2 === 1
 
-        // Track if this paragraph ends with : or ; for the next iteration
-        prevEndedWithColonOrSemicolon = /[:;]\s*$/.test(text)
-
-        // If it's a block quote but ends with : or ; keep block quote mode for next paragraph
-        // If it doesn't look enumerated and previous didn't end with :; exit block quote mode
         if (isBlockQuote) {
           // Block quote — single spaced, 0.5" left+right indent, NO first line indent
           children.push(para(
-            formatTextWithCitations(text),
+            formatTextWithCitations(part),
             { after: 200, line: SINGLE, indentLeft: HALF_INCH, indentRight: HALF_INCH }
           ))
           continue
         }
 
-        if (i === 0) {
+        if (isFirst) {
+          isFirst = false
           // First paragraph — numbered, with underlined defense reference
           const defRef = `Defendant's ${def.ordinal} Affirmative Defense`
-          const defRefIndex = text.indexOf(defRef)
+          const defRefIndex = part.indexOf(defRef)
 
           if (defRefIndex >= 0) {
-            const afterDefRef = text.substring(defRefIndex + defRef.length)
+            const afterDefRef = part.substring(defRefIndex + defRef.length)
 
             // Format the text after the defense reference with case name italicization
             const afterRuns = formatTextWithCitations(
@@ -244,7 +237,7 @@ function buildReplyDocument(result: ProcessResult): Document {
             ], { after: 200, firstLine: HALF_INCH }))
           } else {
             children.push(para(
-              [tr(`${paragraphNum}.\t`), ...formatTextWithCitations(text)],
+              [tr(`${paragraphNum}.\t`), ...formatTextWithCitations(part)],
               { after: 200, firstLine: HALF_INCH }
             ))
           }
@@ -252,7 +245,7 @@ function buildReplyDocument(result: ProcessResult): Document {
         } else {
           // Continuation paragraphs — with case name italicization
           children.push(para(
-            formatTextWithCitations(text),
+            formatTextWithCitations(part),
             { after: 200, firstLine: HALF_INCH }
           ))
         }

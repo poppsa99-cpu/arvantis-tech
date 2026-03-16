@@ -1165,7 +1165,19 @@ export default function AgentWorkspacePage() {
                             className="text-[13px] sm:text-[14px] text-gray-900 dark:text-gray-100 whitespace-pre-line leading-[1.8]"
                             style={{ fontFamily: '"Times New Roman", Times, Georgia, serif' }}
                           >
-                            {selectedDoc.result.reply}
+                            {selectedDoc.result.reply.split(/\[BLOCKQUOTE\]|\[\/BLOCKQUOTE\]/).map((segment: string, i: number) =>
+                              i % 2 === 1 ? (
+                                <div
+                                  key={i}
+                                  className="my-3 leading-[1.4]"
+                                  style={{ marginLeft: '0.5in', marginRight: '0.5in' }}
+                                >
+                                  {segment.trim()}
+                                </div>
+                              ) : (
+                                <span key={i}>{segment}</span>
+                              )
+                            )}
                           </div>
                         </div>
                       </div>
