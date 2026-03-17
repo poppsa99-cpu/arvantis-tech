@@ -99,49 +99,8 @@ export async function POST(request: NextRequest) {
   })
 }
 
-// Normalize DB defense text: collapse soft-wrapped \n\n into spaces,
-// preserve indented lines as [BLOCKQUOTE] markers for block quotes
+// DB defense text now uses explicit markers — pass through as-is.
+// Markers: [I]...[/I] for italics, [BQ]...[/BQ] for block quotes, \n for paragraph breaks.
 function normalizeDefenseText(rawText: string): string {
-  const lines = rawText.replace(/\r\n/g, '\n').split('\n')
-  const segments: { type: 'text' | 'blockquote'; content: string }[] = []
-  let currentText: string[] = []
-  let currentBlock: string[] = []
-
-  function flushText() {
-    if (currentText.length > 0) {
-      segments.push({ type: 'text', content: currentText.join(' ').replace(/  +/g, ' ').trim() })
-      currentText = []
-    }
-  }
-  function flushBlock() {
-    if (currentBlock.length > 0) {
-      segments.push({ type: 'blockquote', content: currentBlock.join(' ').replace(/  +/g, ' ').trim() })
-      currentBlock = []
-    }
-  }
-
-  for (const line of lines) {
-    const trimmed = line.trimEnd()
-    if (trimmed === '') continue
-    if (line.startsWith(' ') && trimmed.length > 10) {
-      flushText()
-      currentBlock.push(trimmed.trim())
-    } else {
-      flushBlock()
-      currentText.push(trimmed.trim())
-    }
-  }
-  flushText()
-  flushBlock()
-
-  const parts: string[] = []
-  for (const seg of segments) {
-    if (seg.content.length === 0) continue
-    if (seg.type === 'blockquote') {
-      parts.push('\n\n[BLOCKQUOTE]' + seg.content + '[/BLOCKQUOTE]\n\n')
-    } else {
-      parts.push(seg.content)
-    }
-  }
-  return parts.join(' ').replace(/  +/g, ' ').trim()
+  return rawText.trim()
 }

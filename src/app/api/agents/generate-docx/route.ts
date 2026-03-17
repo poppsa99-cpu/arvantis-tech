@@ -86,32 +86,19 @@ function cleanResponseText(text: string): string {
   return text.replace(/^\s*\([^)]+\)\s*/, '').trim()
 }
 
-// Detect case names (contains "v.") and italicize them in text
-// Case citations follow: CaseName v. OtherName, VOLUME Reporter PAGE (Court YEAR)
-function formatTextWithCitations(text: string, baseOpts: Partial<{ bold: boolean; underline: boolean; color: string }> = {}): TextRun[] {
-  // Pattern: finds "CaseName v. OtherName" before a reporter citation
-  // Reporters: So. 2d/3d, F.2d/3d, F. Supp, S. Ct., U.S.
-  const pattern = /([A-Z][A-Za-z'".&§,()\-–— ]+?v\.\s+[A-Za-z'".&§,()\-–— ]+?)(?=,?\s+\d+\s+(?:So\.|F\.\d|F\. Supp|S\.\s*Ct|U\.S\.))/g
-
+// Parse [I]...[/I] markers in text and produce TextRuns with italics applied.
+// Strips all formatting markers so nothing leaks into the final document.
+function formatMarkedText(text: string, baseOpts: Partial<{ bold: boolean; underline: boolean; color: string }> = {}): TextRun[] {
   const runs: TextRun[] = []
-  let lastIndex = 0
-  let match
-
-  while ((match = pattern.exec(text)) !== null) {
-    // Text before the case name
-    if (match.index > lastIndex) {
-      runs.push(tr(text.substring(lastIndex, match.index), baseOpts))
+  const parts = text.split(/\[I\]|\[\/I\]/)
+  for (let i = 0; i < parts.length; i++) {
+    if (!parts[i]) continue
+    if (i % 2 === 1) {
+      runs.push(tr(parts[i], { ...baseOpts, italics: true }))
+    } else {
+      runs.push(tr(parts[i], baseOpts))
     }
-    // Case name — italicized
-    runs.push(tr(match[1], { ...baseOpts, italics: true }))
-    lastIndex = match.index + match[1].length
   }
-
-  // Remaining text
-  if (lastIndex < text.length) {
-    runs.push(tr(text.substring(lastIndex), baseOpts))
-  }
-
   return runs.length > 0 ? runs : [tr(text, baseOpts)]
 }
 
@@ -197,20 +184,37 @@ function buildReplyDocument(result: ProcessResult): Document {
     if (def.matched && def.responseText) {
       const cleaned = cleanResponseText(def.responseText)
 
-      // Split on [BLOCKQUOTE] markers — odd indices are block quotes
-      const blockParts = cleaned.split(/\[BLOCKQUOTE\]|\[\/BLOCKQUOTE\]/)
-      let isFirst = true
-
-      for (let p = 0; p < blockParts.length; p++) {
-        const part = blockParts[p].replace(/\n/g, ' ').replace(/  +/g, ' ').trim()
-        if (!part) continue
-
+      // Parse segments from marker format:
+      //   [BQ]...[/BQ] = block quotes
+      //   [I]...[/I]   = italics (handled by formatMarkedText)
+      //   \n            = paragraph break
+      const segments: { type: 'text' | 'blockquote'; content: string }[] = []
+      const bqParts = cleaned.split(/\[BQ\]|\[\/BQ\]/)
+      for (let p = 0; p < bqParts.length; p++) {
         const isBlockQuote = p % 2 === 1
-
         if (isBlockQuote) {
+          const content = bqParts[p].trim()
+          if (content) segments.push({ type: 'blockquote', content })
+        } else {
+          // Split regular text on newlines for paragraph breaks
+          // Also support legacy [BLOCKQUOTE]/[PARA] markers for backwards compatibility
+          const text = bqParts[p]
+            .replace(/\[BLOCKQUOTE\]/g, '[BQ]').replace(/\[\/BLOCKQUOTE\]/g, '[/BQ]')
+            .replace(/\[PARA\]/g, '\n')
+          const paraParts = text.split('\n')
+          for (const pp of paraParts) {
+            const content = pp.replace(/  +/g, ' ').trim()
+            if (content) segments.push({ type: 'text', content })
+          }
+        }
+      }
+
+      let isFirst = true
+      for (const seg of segments) {
+        if (seg.type === 'blockquote') {
           // Block quote — single spaced, 0.5" left+right indent, NO first line indent
           children.push(para(
-            formatTextWithCitations(part),
+            formatMarkedText(seg.content),
             { after: 200, line: SINGLE, indentLeft: HALF_INCH, indentRight: HALF_INCH }
           ))
           continue
@@ -220,13 +224,12 @@ function buildReplyDocument(result: ProcessResult): Document {
           isFirst = false
           // First paragraph — numbered, with underlined defense reference
           const defRef = `Defendant's ${def.ordinal} Affirmative Defense`
-          const defRefIndex = part.indexOf(defRef)
+          const defRefIndex = seg.content.indexOf(defRef)
 
           if (defRefIndex >= 0) {
-            const afterDefRef = part.substring(defRefIndex + defRef.length)
+            const afterDefRef = seg.content.substring(defRefIndex + defRef.length)
 
-            // Format the text after the defense reference with case name italicization
-            const afterRuns = formatTextWithCitations(
+            const afterRuns = formatMarkedText(
               afterDefRef.startsWith(',') || afterDefRef.startsWith(' ') ? afterDefRef : ' ' + afterDefRef
             )
 
@@ -236,16 +239,19 @@ function buildReplyDocument(result: ProcessResult): Document {
               ...afterRuns,
             ], { after: 200, firstLine: HALF_INCH }))
           } else {
-            children.push(para(
-              [tr(`${paragraphNum}.\t`), ...formatTextWithCitations(part)],
-              { after: 200, firstLine: HALF_INCH }
-            ))
+            // Defense reference not found in text — prepend it with underline
+            children.push(para([
+              tr(`${paragraphNum}.\tAs to `),
+              tr(`Defendant's ${def.ordinal} Affirmative Defense`, { underline: true }),
+              tr(', '),
+              ...formatMarkedText(seg.content),
+            ], { after: 200, firstLine: HALF_INCH }))
           }
           paragraphNum++
         } else {
-          // Continuation paragraphs — with case name italicization
+          // Continuation paragraphs
           children.push(para(
-            formatTextWithCitations(part),
+            formatMarkedText(seg.content),
             { after: 200, firstLine: HALF_INCH }
           ))
         }
