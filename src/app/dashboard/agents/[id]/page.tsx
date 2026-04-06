@@ -69,7 +69,7 @@ function statusLabel(status: DocStatus): string {
   }
 }
 
-type DocType = 'motion-to-strike'
+type DocType = 'motion-to-strike' | 'motion-to-compel'
 
 interface SidebarItem {
   id: DocType
@@ -77,6 +77,110 @@ interface SidebarItem {
   description: string
   icon: React.ReactNode
   active: boolean
+}
+
+interface MotionTarget {
+  targetName: string
+  targetTitle: string
+  targetPronoun: 'he' | 'she' | 'they'
+  crTestimony: string
+  reasonForCompelling: string
+}
+
+interface MotionToCompelData {
+  plaintiffNames: string[]
+  defendantName: string
+  caseNumber: string
+  circuitNumber: string
+  county: string
+  corporateRepName: string
+  corporateRepDepositionDate: string
+  targets: MotionTarget[]
+}
+
+interface MotionToCompelEntry {
+  id: string
+  fileName: string
+  status: DocStatus
+  error?: string
+  result?: MotionToCompelData
+}
+
+function MotionToCompelResults({
+  data,
+  onBack,
+  onDownload,
+}: {
+  data: MotionToCompelData
+  onBack: () => void
+  onDownload: (data: MotionToCompelData, i: number) => void
+}) {
+  return (
+    <BlurFade delay={0.05} duration={0.3}>
+      <div className="space-y-6">
+        <button
+          onClick={onBack}
+          className="flex items-center gap-1.5 text-sm font-medium text-[var(--muted-dim)] hover:text-[var(--foreground)] transition-colors group"
+        >
+          <svg className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg>
+          Back to uploads
+        </button>
+
+        <div className="relative overflow-hidden rounded-2xl border border-[var(--card-border)] bg-gradient-to-br from-[var(--card)] to-[var(--background)] shadow-lg dark:shadow-2xl">
+          <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-blue-500 to-blue-600" />
+          <div className="p-6 pl-7">
+            <h3 className="text-xl font-bold text-[var(--foreground)] mb-4">Case Summary</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {[
+                { label: 'Plaintiff', value: data.plaintiffNames.join(' and ') },
+                { label: 'Defendant', value: data.defendantName },
+                { label: 'Case No.', value: data.caseNumber },
+                { label: 'Court', value: data.circuitNumber && data.county ? `${data.circuitNumber} Circuit, ${data.county}` : data.county },
+                { label: 'Corporate Rep Deposed', value: data.corporateRepName },
+                { label: 'Deposition Date', value: data.corporateRepDepositionDate },
+              ].map(({ label, value }) => (
+                <div key={label} className="space-y-0.5">
+                  <span className="text-[11px] uppercase tracking-[0.15em] text-blue-600 dark:text-blue-400 font-bold">{label}</span>
+                  <p className="text-sm font-semibold text-[var(--foreground)]">{value || '—'}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h2 className="text-xl font-bold text-[var(--foreground)] mb-3">
+            {data.targets.length} Motion{data.targets.length !== 1 ? 's' : ''} Ready to Download
+          </h2>
+          <div className="space-y-3">
+            {data.targets.map((target, i) => (
+              <BlurFade key={i} delay={i * 0.04} duration={0.2}>
+                <div className="relative overflow-hidden rounded-2xl border border-[var(--card-border)] bg-gradient-to-r from-blue-50/40 via-[var(--card)] to-[var(--card)] dark:from-blue-900/5 dark:via-[var(--card)] dark:to-[var(--card)] shadow-md">
+                  <div className="absolute top-0 left-0 w-1 h-full bg-blue-500" />
+                  <div className="p-5 pl-6 flex items-start justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-base font-bold text-[var(--foreground)] truncate">{target.targetName}</p>
+                      {target.targetTitle && (
+                        <p className="text-sm text-blue-600 dark:text-blue-400 font-medium mt-0.5">{target.targetTitle}</p>
+                      )}
+                      <p className="text-sm text-[var(--muted-dim)] mt-1 leading-snug line-clamp-2">{target.crTestimony}</p>
+                    </div>
+                    <button
+                      onClick={() => onDownload(data, i)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold shrink-0 transition-colors"
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+                      Download Motion
+                    </button>
+                  </div>
+                </div>
+              </BlurFade>
+            ))}
+          </div>
+        </div>
+      </div>
+    </BlurFade>
+  )
 }
 
 const SIDEBAR_ITEMS: SidebarItem[] = [
@@ -87,6 +191,17 @@ const SIDEBAR_ITEMS: SidebarItem[] = [
     icon: (
       <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+      </svg>
+    ),
+    active: true,
+  },
+  {
+    id: 'motion-to-compel',
+    label: 'Motion to Compel',
+    description: 'Generate deposition motions from your follow-up email',
+    icon: (
+      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
       </svg>
     ),
     active: true,
@@ -110,6 +225,8 @@ export default function AgentWorkspacePage() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [categories, setCategories] = useState<Array<{id: string, name: string}>>([])
   const [reassigning, setReassigning] = useState<Record<number, boolean>>({})
+  const [motionDocs, setMotionDocs] = useState<MotionToCompelEntry[]>([])
+  const [selectedMotionId, setSelectedMotionId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const mainRef = useRef<HTMLElement>(null)
   const router = useRouter()
@@ -265,6 +382,19 @@ export default function AgentWorkspacePage() {
 
     if (validFiles.length === 0) return
 
+    if (selectedDocType === 'motion-to-compel') {
+      const newEntries: MotionToCompelEntry[] = validFiles.map(f => ({
+        id: `motion-${++docIdCounter}`,
+        fileName: f.name,
+        status: 'extracting' as DocStatus,
+      }))
+      setMotionDocs(prev => [...prev, ...newEntries])
+      for (let i = 0; i < validFiles.length; i++) {
+        extractAndProcessMotionToCompel(validFiles[i], newEntries[i].id)
+      }
+      return
+    }
+
     const newEntries: DocEntry[] = validFiles.map(f => ({
       id: `doc-${++docIdCounter}`,
       fileName: f.name,
@@ -279,7 +409,7 @@ export default function AgentWorkspacePage() {
       const entry = newEntries[i]
       extractAndProcess(file, entry.id)
     }
-  }, [])
+  }, [selectedDocType])
 
   async function extractAndProcess(file: File, docId: string) {
     try {
@@ -316,6 +446,70 @@ export default function AgentWorkspacePage() {
     }
   }
 
+  function updateMotionDoc(id: string, updates: Partial<MotionToCompelEntry>) {
+    setMotionDocs(prev => prev.map(d => d.id === id ? { ...d, ...updates } : d))
+  }
+
+  async function extractAndProcessMotionToCompel(file: File, docId: string) {
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const extractRes = await fetch('/api/agents/extract', { method: 'POST', body: formData })
+      if (!extractRes.ok) {
+        const err = await extractRes.json()
+        throw new Error(err.error || `Extract failed: HTTP ${extractRes.status}`)
+      }
+
+      const { text } = await extractRes.json()
+      updateMotionDoc(docId, { status: 'processing' })
+
+      const processRes = await fetch('/api/agents/motion-to-compel/process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      })
+
+      if (!processRes.ok) {
+        const err = await processRes.json()
+        throw new Error(err.error || `Process failed: HTTP ${processRes.status}`)
+      }
+
+      const result: MotionToCompelData = await processRes.json()
+      updateMotionDoc(docId, { status: 'done', result })
+
+      setSelectedMotionId(docId)
+      switchView('results')
+    } catch (err) {
+      updateMotionDoc(docId, {
+        status: 'error',
+        error: err instanceof Error ? err.message : 'Unknown error',
+      })
+    }
+  }
+
+  async function handleDownloadMotion(data: MotionToCompelData, targetIndex: number) {
+    try {
+      const res = await fetch('/api/agents/motion-to-compel/generate-docx', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data, targetIndex }),
+      })
+      if (!res.ok) throw new Error('Failed to generate document')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      const target = data.targets[targetIndex]
+      const targetLast = target?.targetName?.split(' ').slice(-1)[0] || 'Motion'
+      a.download = `Motion to Compel - ${targetLast}.docx`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error('Download failed:', err)
+    }
+  }
+
   function handleDrop(e: React.DragEvent) {
     e.preventDefault()
     setDragOver(false)
@@ -337,6 +531,8 @@ export default function AgentWorkspacePage() {
   function handleClearAll() {
     setDocs([])
     setSelectedDocId(null)
+    setMotionDocs([])
+    setSelectedMotionId(null)
     switchView('upload')
   }
 
@@ -636,7 +832,7 @@ export default function AgentWorkspacePage() {
               {SIDEBAR_ITEMS.find(i => i.id === selectedDocType)?.label}
             </h1>
             <Badge variant="outline" className="text-[10px] uppercase tracking-wider font-semibold text-green-600 dark:text-green-400 border-green-500/30 bg-green-500/5 hidden sm:inline-flex">
-              {selectedDocType === 'motion-to-strike' ? 'Active' : 'Coming Soon'}
+              Active
             </Badge>
             <WorkflowTutorial
               workflowId="motion-to-strike"
@@ -701,7 +897,7 @@ export default function AgentWorkspacePage() {
                   <button
                     key={tab}
                     onClick={() => switchView(tab)}
-                    disabled={tab === 'results' && !selectedDoc?.result}
+                    disabled={tab === 'results' && !selectedDoc?.result && !motionDocs.find(d => d.id === selectedMotionId)?.result}
                     className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
                       activeView === tab
                         ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
@@ -770,7 +966,9 @@ export default function AgentWorkspacePage() {
                       </div>
                       <div>
                         <p className="text-base text-[var(--foreground)] font-semibold">
-                          Drop defendant answer files here
+                          {selectedDocType === 'motion-to-compel'
+                            ? 'Drop your deposition request email here'
+                            : 'Drop defendant answer files here'}
                         </p>
                         <p className="text-sm text-[var(--muted-dim)] mt-1">
                           or <span className="text-blue-500 font-medium">click to browse</span> &mdash; PDF or DOCX
@@ -780,7 +978,7 @@ export default function AgentWorkspacePage() {
                   </div>
 
                   {/* Empty state tip */}
-                  {docs.length === 0 && (
+                  {docs.length === 0 && motionDocs.length === 0 && (
                     <div className="text-center py-6">
                       <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-500/5 border border-blue-500/10">
                         <svg className="h-4 w-4 text-blue-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -793,8 +991,89 @@ export default function AgentWorkspacePage() {
                     </div>
                   )}
 
+                  {/* Motion to Compel upload list */}
+                  {selectedDocType === 'motion-to-compel' && motionDocs.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h2 className="text-sm font-semibold text-[var(--foreground)]">Documents</h2>
+                        <button
+                          onClick={handleClearAll}
+                          className="text-sm font-medium text-[var(--muted-dim)] hover:text-[var(--foreground)] transition-colors"
+                        >
+                          Clear all
+                        </button>
+                      </div>
+                      <div className="space-y-2">
+                        {motionDocs.map((doc, i) => (
+                          <BlurFade key={doc.id} delay={i * 0.05} duration={0.25}>
+                            <Card className={`ring-0 shadow-sm transition-all duration-200 hover:shadow-md ${
+                              doc.status === 'error' ? 'border border-red-500/20 shadow-red-500/5' : 'border border-[var(--card-border)]'
+                            }`}>
+                              <CardContent className="py-3 px-4">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-3 min-w-0">
+                                    <div className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 ${
+                                      doc.status === 'done' ? 'bg-green-500/10 text-green-500' :
+                                      doc.status === 'error' ? 'bg-red-500/10 text-red-500' :
+                                      'bg-blue-500/10 text-blue-500'
+                                    }`}>
+                                      {(doc.status === 'extracting' || doc.status === 'processing') && (
+                                        <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                        </svg>
+                                      )}
+                                      {doc.status === 'done' && (
+                                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                        </svg>
+                                      )}
+                                      {doc.status === 'error' && (
+                                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                                        </svg>
+                                      )}
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-sm font-semibold truncate">{doc.fileName}</p>
+                                      <p className="text-xs text-[var(--muted-dim)] mt-0.5">
+                                        {doc.status === 'done' && doc.result ? (
+                                          <span className="text-green-600 dark:text-green-400">
+                                            {doc.result.targets.length} motion{doc.result.targets.length !== 1 ? 's' : ''} ready
+                                          </span>
+                                        ) : doc.status === 'error' ? (
+                                          <span className="text-red-500">{doc.error}</span>
+                                        ) : doc.status === 'processing' ? (
+                                          'Analyzing email...'
+                                        ) : (
+                                          statusLabel(doc.status)
+                                        )}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2 shrink-0 ml-4">
+                                    {doc.status === 'done' && (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => { setSelectedMotionId(doc.id); switchView('results') }}
+                                        className="text-xs"
+                                      >
+                                        View Motions
+                                      </Button>
+                                    )}
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </BlurFade>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* File List */}
-                  {docs.length > 0 && (
+                  {selectedDocType === 'motion-to-strike' && docs.length > 0 && (
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <h2 className="text-sm font-semibold text-[var(--foreground)]">Documents</h2>
@@ -949,8 +1228,17 @@ export default function AgentWorkspacePage() {
               </BlurFade>
             )}
 
+            {/* Motion to Compel Results View */}
+            {activeView === 'results' && selectedDocType === 'motion-to-compel' && motionDocs.find(d => d.id === selectedMotionId)?.result && (
+              <MotionToCompelResults
+                data={motionDocs.find(d => d.id === selectedMotionId)!.result!}
+                onBack={() => switchView('upload')}
+                onDownload={handleDownloadMotion}
+              />
+            )}
+
             {/* Results View */}
-            {activeView === 'results' && selectedDoc?.result && (
+            {activeView === 'results' && selectedDocType === 'motion-to-strike' && selectedDoc?.result && (
               <BlurFade delay={0.05} duration={0.3}>
                 <div className="space-y-6">
                   {/* Back button */}
