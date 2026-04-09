@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
+import { logDiff } from '@/lib/analytics'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET() {
@@ -73,9 +74,19 @@ export async function POST(request: NextRequest) {
       defense_text_snippet: (defenseText || '').slice(0, 200),
       chosen_category_name: category.name,
     })
-  } catch {
-    // Non-blocking — don't fail if tracking fails
+  } catch (err) {
+    console.error('Failed to save lawyer preference:', err)
   }
+
+  // Log the AI correction for training data
+  logDiff({
+    userId: user.id,
+    workflow: 'motion-to-strike',
+    field: 'defense_category',
+    aiValue: `Defense #${defenseNumber} was unmatched/wrong`,
+    humanValue: category.name,
+    context: { defenseNumber, ordinal, defenseTextSnippet: (defenseText || '').slice(0, 200), newCategoryId: categoryId },
+  })
 
   // Substitute the correct ordinal into the response template
   // Templates from the DB may have:

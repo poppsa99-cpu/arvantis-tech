@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { logEvent } from '@/lib/analytics'
 import { NextRequest, NextResponse } from 'next/server'
 import {
   Document,
@@ -334,6 +335,8 @@ export async function POST(request: NextRequest) {
 
   const caseName = result.caseMetadata.plaintiffName || 'Reply'
   const filename = `${caseName} - Reply to Affirmative Defenses.docx`
+
+  logEvent({ userId: user.id, event: 'download', workflow: 'motion-to-strike', metadata: { plaintiff: result.caseMetadata.plaintiffName, defendant: result.caseMetadata.defendantName, caseNumber: result.caseMetadata.caseNumber, totalDefenses: result.summary?.totalDefenses, matched: result.summary?.matched, flagged: result.summary?.flagged } })
 
   return new NextResponse(new Uint8Array(buffer), {
     headers: {

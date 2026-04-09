@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { logEvent } from '@/lib/analytics'
 import { NextRequest, NextResponse } from 'next/server'
 import { execFile } from 'child_process'
 import { promisify } from 'util'
@@ -75,6 +76,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Only PDF and DOCX files are accepted' }, { status: 400 })
   }
 
+  const startTime = Date.now()
   const buffer = Buffer.from(await file.arrayBuffer())
   let text = ''
 
@@ -93,15 +95,19 @@ export async function POST(request: NextRequest) {
       text = result.value
     }
   } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : String(err)
+    logEvent({ userId: user.id, event: 'extract_error', workflow: 'motion-to-strike', error: errorMsg, durationMs: Date.now() - startTime, metadata: { fileName: file.name, fileSize: file.size, fileType: name.endsWith('.pdf') ? 'pdf' : 'docx' } })
     return NextResponse.json(
-      { error: `Failed to extract text: ${err instanceof Error ? err.message : String(err)}` },
+      { error: `Failed to extract text: ${errorMsg}` },
       { status: 422 }
     )
   }
 
   if (!text.trim()) {
+    logEvent({ userId: user.id, event: 'extract_error', workflow: 'motion-to-strike', error: 'No text extracted', durationMs: Date.now() - startTime, metadata: { fileName: file.name, fileSize: file.size } })
     return NextResponse.json({ error: 'No text could be extracted from the file' }, { status: 422 })
   }
 
+  logEvent({ userId: user.id, event: 'extract_success', workflow: 'motion-to-strike', durationMs: Date.now() - startTime, metadata: { fileName: file.name, fileSize: file.size, charCount: text.length, fileType: name.endsWith('.pdf') ? 'pdf' : 'docx' } })
   return NextResponse.json({ text, filename: file.name, chars: text.length })
 }

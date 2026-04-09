@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
+import { fetchWithRetry } from '@/lib/fetch-retry'
+import { logEvent } from '@/lib/analytics'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
@@ -9,6 +11,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const startTime = Date.now()
   const { text } = await request.json()
   if (!text) {
     return NextResponse.json({ error: 'No text provided' }, { status: 400 })
@@ -20,15 +23,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'N8N_WEBHOOK_URL not configured' }, { status: 500 })
   }
 
-  const n8nRes = await fetch(n8nUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text }),
-  })
+  let n8nRes: Response
+  try {
+    n8nRes = await fetchWithRetry(n8nUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    })
+  } catch (err) {
+    console.error('n8n webhook failed after retries:', err)
+    logEvent({ userId: user.id, event: 'webhook_failure', workflow: 'motion-to-strike', error: String(err), durationMs: Date.now() - startTime, metadata: { textLength: text.length } })
+    return NextResponse.json({ error: 'Processing service unavailable. Please try again.' }, { status: 502 })
+  }
 
   if (!n8nRes.ok) {
     const errText = await n8nRes.text()
-    return NextResponse.json({ error: `n8n error: ${errText}` }, { status: 502 })
+    console.error('n8n returned error:', n8nRes.status, errText)
+    logEvent({ userId: user.id, event: 'process_error', workflow: 'motion-to-strike', error: errText, durationMs: Date.now() - startTime, metadata: { textLength: text.length, httpStatus: n8nRes.status } })
+    return NextResponse.json({ error: `Processing failed: ${errText}` }, { status: 502 })
   }
 
   const result = await n8nRes.json()
@@ -93,10 +105,11 @@ export async function POST(request: NextRequest) {
       reply_text: result.reply,
       status: result.summary?.flagged > 0 ? 'needs_review' : 'complete',
     })
-  } catch {
-    // Non-blocking — don't fail if tracking fails
+  } catch (err) {
+    console.error('Failed to save processed document history:', err)
   }
 
+  logEvent({ userId: user.id, event: 'process_success', workflow: 'motion-to-strike', durationMs: Date.now() - startTime, metadata: { totalDefenses: result.summary?.totalDefenses, matched: result.summary?.matched, flagged: result.summary?.flagged, plaintiff: result.caseMetadata?.plaintiffName, defendant: result.caseMetadata?.defendantName } })
   return NextResponse.json(result)
 }
 

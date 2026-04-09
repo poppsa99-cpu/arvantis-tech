@@ -1,5 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
+import { getSupabaseAdmin } from '@/lib/supabase/admin'
+import { logEvent, logDiff } from '@/lib/analytics'
 import { NextRequest, NextResponse } from 'next/server'
+import type { FirmSettings } from '../../firm-settings/route'
 import {
   Document,
   Packer,
@@ -59,7 +62,7 @@ function honorific(pronoun: 'he' | 'she' | 'they'): string {
   return ''
 }
 
-function buildMotionToCompelDocument(data: MotionToCompelData, target: MotionTarget): Document {
+function buildMotionToCompelDocument(data: MotionToCompelData, target: MotionTarget, firm: FirmSettings): Document {
   const plaintiffStr = data.plaintiffNames.join(' AND ')
   const defendant = data.defendantName || '[DEFENDANT NAME]'
   const caseNo = data.caseNumber || '[CASE NUMBER]'
@@ -213,25 +216,26 @@ function buildMotionToCompelDocument(data: MotionToCompelData, target: MotionTar
     { after: 200, align: AlignmentType.CENTER, line: SINGLE }
   ))
   children.push(blank())
+  const currentYear = new Date().getFullYear()
   children.push(para(
-    [tr('I HEREBY CERTIFY that a true and correct copy of the foregoing was served via Florida Courts E-Filing Portal on this ___ day of ___2026.')],
+    [tr(`I HEREBY CERTIFY that a true and correct copy of the foregoing was served via Florida Courts E-Filing Portal on this ___ day of ___ ${currentYear}.`)],
     { after: 400, firstLine: HALF_INCH }
   ))
 
-  // Firm info
-  children.push(para([tr('KANNER & PINTALUGA, P.A.', { bold: true })], { align: AlignmentType.RIGHT, line: SINGLE, after: 0 }))
-  children.push(para([tr('Attorneys for Plaintiff')], { align: AlignmentType.RIGHT, line: SINGLE, after: 0 }))
-  children.push(para([tr('925 S. Federal Highway')], { align: AlignmentType.RIGHT, line: SINGLE, after: 0 }))
-  children.push(para([tr('Boca Raton, FL 33432')], { align: AlignmentType.RIGHT, line: SINGLE, after: 0 }))
-  children.push(para([tr('Phone: (561) 424-0032')], { align: AlignmentType.RIGHT, line: SINGLE, after: 0 }))
-  children.push(para([tr('Fax:    (561) 853-2188')], { align: AlignmentType.RIGHT, line: SINGLE, after: 0 }))
-  children.push(para([tr('Email: jdavis@kpattorney.com')], { align: AlignmentType.RIGHT, line: SINGLE, after: 0 }))
-  children.push(para([tr('lhernandez@kpattorney.com')], { align: AlignmentType.RIGHT, line: SINGLE, after: 0 }))
-  children.push(para([tr('FirstPartyEService@kpattorney.com')], { align: AlignmentType.RIGHT, line: SINGLE, after: 200 }))
+  // Firm info — pulled from organization settings
+  children.push(para([tr(firm.firm_name, { bold: true })], { align: AlignmentType.RIGHT, line: SINGLE, after: 0 }))
+  children.push(para([tr(firm.firm_role)], { align: AlignmentType.RIGHT, line: SINGLE, after: 0 }))
+  children.push(para([tr(firm.address_line1)], { align: AlignmentType.RIGHT, line: SINGLE, after: 0 }))
+  children.push(para([tr(firm.address_line2)], { align: AlignmentType.RIGHT, line: SINGLE, after: 0 }))
+  children.push(para([tr(`Phone: ${firm.phone}`)], { align: AlignmentType.RIGHT, line: SINGLE, after: 0 }))
+  children.push(para([tr(`Fax:    ${firm.fax}`)], { align: AlignmentType.RIGHT, line: SINGLE, after: 0 }))
+  for (const email of firm.emails) {
+    children.push(para([tr(email === firm.emails[0] ? `Email: ${email}` : email)], { align: AlignmentType.RIGHT, line: SINGLE, after: email === firm.emails[firm.emails.length - 1] ? 200 : 0 }))
+  }
   children.push(blank())
-  children.push(para([tr('By: /s/ Jared Davis_________________')], { align: AlignmentType.RIGHT, line: SINGLE, after: 0 }))
-  children.push(para([tr('       JARED DAVIS, ESQ.')], { align: AlignmentType.RIGHT, line: SINGLE, after: 0 }))
-  children.push(para([tr('       Florida Bar No.: 1024895')], { align: AlignmentType.RIGHT, line: SINGLE, after: 0 }))
+  children.push(para([tr(`By: /s/ ${firm.attorney_name}_________________`)], { align: AlignmentType.RIGHT, line: SINGLE, after: 0 }))
+  children.push(para([tr(`       ${firm.attorney_name.toUpperCase()}, ${firm.attorney_title}`)], { align: AlignmentType.RIGHT, line: SINGLE, after: 0 }))
+  children.push(para([tr(`       Florida Bar No.: ${firm.bar_number}`)], { align: AlignmentType.RIGHT, line: SINGLE, after: 0 }))
 
   return new Document({
     sections: [{
@@ -253,7 +257,7 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json()
-  const { data, targetIndex }: { data: MotionToCompelData; targetIndex: number } = body
+  const { data, targetIndex, originalData }: { data: MotionToCompelData; targetIndex: number; originalData?: MotionToCompelData } = body
 
   if (!data || !data.targets || typeof targetIndex !== 'number') {
     return NextResponse.json({ error: 'Invalid request data' }, { status: 400 })
@@ -264,13 +268,64 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Target not found' }, { status: 400 })
   }
 
-  const doc = buildMotionToCompelDocument(data, target)
+  // Fetch firm settings for this user's organization
+  const admin = getSupabaseAdmin()
+  const { data: org } = await admin
+    .from('organizations')
+    .select('id')
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  const defaultFirm: FirmSettings = {
+    firm_name: '[FIRM NAME]', firm_role: 'Attorneys for Plaintiff',
+    address_line1: '[ADDRESS]', address_line2: '[CITY, STATE ZIP]',
+    phone: '[PHONE]', fax: '[FAX]', emails: ['[EMAIL]'],
+    attorney_name: '[ATTORNEY]', attorney_title: 'ESQ.', bar_number: '[BAR #]',
+  }
+
+  let firm = defaultFirm
+  if (org) {
+    const { data: agents } = await admin
+      .from('organization_agents')
+      .select('config')
+      .eq('organization_id', org.id)
+    const agentWithFirm = (agents || []).find(
+      (a) => a.config && typeof a.config === 'object' && 'firm' in (a.config as Record<string, unknown>)
+    )
+    if (agentWithFirm) {
+      firm = { ...defaultFirm, ...((agentWithFirm.config as Record<string, unknown>).firm as Partial<FirmSettings>) }
+    }
+  }
+
+  const doc = buildMotionToCompelDocument(data, target, firm)
   const buffer = await Packer.toBuffer(doc)
 
   const plaintiffLast = data.plaintiffNames[0]?.split(' ').slice(-1)[0] || 'Plaintiff'
   const defShort = data.defendantName?.split(' ').slice(0, 2).join(' ') || 'Defendant'
   const targetLast = target.targetName?.split(' ').slice(-1)[0] || 'Target'
   const filename = `${plaintiffLast} v ${defShort} - Motion to Compel ${targetLast}.docx`
+
+  logEvent({ userId: user.id, event: 'download', workflow: 'motion-to-compel', metadata: { targetName: target.targetName, targetTitle: target.targetTitle, plaintiff: data.plaintiffNames.join(', '), defendant: data.defendantName, caseNumber: data.caseNumber, targetIndex } })
+
+  // Silently diff AI output vs lawyer edits for training data
+  if (originalData) {
+    const origTarget = originalData.targets?.[targetIndex]
+    if (origTarget) {
+      const fields: (keyof MotionTarget)[] = ['targetName', 'targetTitle', 'targetPronoun', 'crTestimony', 'reasonForCompelling']
+      for (const field of fields) {
+        if (origTarget[field] !== target[field]) {
+          logDiff({ userId: user.id, workflow: 'motion-to-compel', field, aiValue: origTarget[field], humanValue: target[field], context: { targetIndex, caseNumber: data.caseNumber } })
+        }
+      }
+      // Also diff case-level fields
+      const caseFields: (keyof MotionToCompelData)[] = ['defendantName', 'caseNumber', 'circuitNumber', 'county', 'corporateRepName', 'corporateRepDepositionDate']
+      for (const field of caseFields) {
+        if (originalData[field] !== data[field]) {
+          logDiff({ userId: user.id, workflow: 'motion-to-compel', field, aiValue: originalData[field], humanValue: data[field], context: { caseNumber: data.caseNumber } })
+        }
+      }
+    }
+  }
 
   return new NextResponse(new Uint8Array(buffer), {
     headers: {
