@@ -70,7 +70,7 @@ function statusLabel(status: DocStatus): string {
   }
 }
 
-type DocType = 'motion-to-strike' | 'motion-to-compel' | 'compel-documents'
+type DocType = 'motion-to-strike' | 'motion-to-compel'
 
 interface SidebarItem {
   id: DocType
@@ -113,11 +113,6 @@ interface MotionToCompelEntry {
   result?: MotionToCompelData
 }
 
-interface DocumentRequest {
-  whatTestified: string
-  whatRequested: string
-}
-
 interface CompelDocumentsData {
   plaintiffNames: string[]
   defendantName: string
@@ -129,14 +124,6 @@ interface CompelDocumentsData {
   deponentPronoun: 'he' | 'she' | 'they'
   depositionDate: string
   documentRequests: DocumentRequest[]
-}
-
-interface CompelDocumentsEntry {
-  id: string
-  fileName: string
-  status: DocStatus
-  error?: string
-  result?: CompelDocumentsData
 }
 
 function CompelDocumentsResults({
@@ -570,17 +557,6 @@ const SIDEBAR_ITEMS: SidebarItem[] = [
     ),
     active: true,
   },
-  {
-    id: 'compel-documents',
-    label: 'Compel Documents',
-    description: 'Compel production of documents relied upon by defendant',
-    icon: (
-      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 00-1.883 2.542l.857 6a2.25 2.25 0 002.227 1.932H19.05a2.25 2.25 0 002.227-1.932l.857-6a2.25 2.25 0 00-1.883-2.542m-16.5 0V6A2.25 2.25 0 016 3.75h3.879a1.5 1.5 0 011.06.44l2.122 2.12a1.5 1.5 0 001.06.44H18A2.25 2.25 0 0120.25 9v.776" />
-      </svg>
-    ),
-    active: true,
-  },
 ]
 
 let docIdCounter = 0
@@ -602,8 +578,6 @@ export default function AgentWorkspacePage() {
   const [reassigning, setReassigning] = useState<Record<number, boolean>>({})
   const [motionDocs, setMotionDocs] = useState<MotionToCompelEntry[]>([])
   const [selectedMotionId, setSelectedMotionId] = useState<string | null>(null)
-  const [compelDocsDocs, setCompelDocsDocs] = useState<CompelDocumentsEntry[]>([])
-  const [selectedCompelDocsId, setSelectedCompelDocsId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const mainRef = useRef<HTMLElement>(null)
   const router = useRouter()
@@ -634,8 +608,6 @@ export default function AgentWorkspacePage() {
         const slug = Array.isArray(tmpl) ? (tmpl[0] as { slug: string })?.slug : (tmpl as { slug: string } | null)?.slug
         if (slug === 'motion-to-compel') {
           setSelectedDocType('motion-to-compel')
-        } else if (slug === 'compel-documents') {
-          setSelectedDocType('compel-documents')
         }
       }
     }
@@ -785,19 +757,6 @@ export default function AgentWorkspacePage() {
       setMotionDocs(prev => [...prev, ...newEntries])
       for (let i = 0; i < validFiles.length; i++) {
         extractAndProcessMotionToCompel(validFiles[i], newEntries[i].id)
-      }
-      return
-    }
-
-    if (selectedDocType === 'compel-documents') {
-      const newEntries: CompelDocumentsEntry[] = validFiles.map(f => ({
-        id: `compeldocs-${++docIdCounter}`,
-        fileName: f.name,
-        status: 'extracting' as DocStatus,
-      }))
-      setCompelDocsDocs(prev => [...prev, ...newEntries])
-      for (let i = 0; i < validFiles.length; i++) {
-        extractAndProcessCompelDocs(validFiles[i], newEntries[i].id)
       }
       return
     }
@@ -972,70 +931,6 @@ export default function AgentWorkspacePage() {
     }
   }
 
-  // ── Compel Documents handlers ──
-
-  function updateCompelDocsDoc(id: string, updates: Partial<CompelDocumentsEntry>) {
-    setCompelDocsDocs(prev => prev.map(d => d.id === id ? { ...d, ...updates } : d))
-  }
-
-  async function extractAndProcessCompelDocs(file: File, docId: string) {
-    try {
-      const formData = new FormData()
-      formData.append('file', file)
-
-      const extractRes = await fetch('/api/agents/extract', { method: 'POST', body: formData })
-      if (!extractRes.ok) {
-        const err = await extractRes.json()
-        throw new Error(err.error || `Extract failed: HTTP ${extractRes.status}`)
-      }
-
-      const { text } = await extractRes.json()
-      updateCompelDocsDoc(docId, { status: 'processing' })
-
-      const processRes = await fetch('/api/agents/compel-documents/process', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
-      })
-
-      if (!processRes.ok) {
-        const err = await processRes.json()
-        throw new Error(err.error || `Process failed: HTTP ${processRes.status}`)
-      }
-
-      const result: CompelDocumentsData = await processRes.json()
-      updateCompelDocsDoc(docId, { status: 'done', result })
-
-      setSelectedCompelDocsId(docId)
-      switchView('results')
-    } catch (err) {
-      updateCompelDocsDoc(docId, {
-        status: 'error',
-        error: getUserFriendlyError(err instanceof Error ? err.message : 'Unknown error'),
-      })
-    }
-  }
-
-  async function handleDownloadCompelDocs(data: CompelDocumentsData, requestIndex: number, originalData?: CompelDocumentsData) {
-    try {
-      const res = await fetch('/api/agents/compel-documents/generate-docx', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data, requestIndex, originalData }),
-      })
-      if (!res.ok) throw new Error('Failed to generate document')
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `MTC Documentation ${requestIndex + 1}.docx`
-      a.click()
-      URL.revokeObjectURL(url)
-    } catch (err) {
-      console.error('Download failed:', err)
-    }
-  }
-
   function handleDrop(e: React.DragEvent) {
     e.preventDefault()
     setDragOver(false)
@@ -1059,8 +954,6 @@ export default function AgentWorkspacePage() {
     setSelectedDocId(null)
     setMotionDocs([])
     setSelectedMotionId(null)
-    setCompelDocsDocs([])
-    setSelectedCompelDocsId(null)
     switchView('upload')
   }
 
@@ -1430,7 +1323,7 @@ export default function AgentWorkspacePage() {
                   <button
                     key={tab}
                     onClick={() => switchView(tab)}
-                    disabled={tab === 'results' && !selectedDoc?.result && !motionDocs.find(d => d.id === selectedMotionId)?.result && !compelDocsDocs.find(d => d.id === selectedCompelDocsId)?.result}
+                    disabled={tab === 'results' && !selectedDoc?.result && !motionDocs.find(d => d.id === selectedMotionId)?.result}
                     className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
                       activeView === tab
                         ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
@@ -1500,9 +1393,7 @@ export default function AgentWorkspacePage() {
                       <div>
                         <p className="text-base text-[var(--foreground)] font-semibold">
                           {selectedDocType === 'motion-to-compel'
-                            ? 'Drop your deposition request email here'
-                            : selectedDocType === 'compel-documents'
-                            ? 'Drop your document production request email here'
+                            ? 'Drop your follow-up email here'
                             : 'Drop defendant answer files here'}
                         </p>
                         <p className="text-sm text-[var(--muted-dim)] mt-1">
@@ -1521,9 +1412,7 @@ export default function AgentWorkspacePage() {
                         </svg>
                         <p className="text-sm text-[var(--muted-dim)]">
                           {selectedDocType === 'motion-to-compel'
-                            ? 'Upload a deposition request follow-up email to generate motions to compel'
-                            : selectedDocType === 'compel-documents'
-                            ? 'Upload a document production request email to compel documentation relied upon'
+                            ? 'Upload a follow-up email to generate motions to compel depositions and/or documents'
                             : 'Upload a defendant\u2019s answer with affirmative defenses to generate a reply document'}
                         </p>
                       </div>
