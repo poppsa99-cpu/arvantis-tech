@@ -10,6 +10,7 @@ import {
   Kanban,
   DollarSign,
   Bot,
+  Activity,
   Settings,
   LogOut,
   Menu,
@@ -27,6 +28,7 @@ const navItems = [
   { href: '/admin/pipeline', label: 'Pipeline', icon: Kanban },
   { href: '/admin/revenue', label: 'Revenue', icon: DollarSign },
   { href: '/admin/agents', label: 'Agents', icon: Bot },
+  { href: '/admin/workflow-logs', label: 'Workflow Logs', icon: Activity },
   { href: '/admin/settings', label: 'Settings', icon: Settings },
 ]
 

@@ -81,11 +81,16 @@ interface SidebarItem {
 }
 
 interface MotionTarget {
-  targetName: string
-  targetTitle: string
+  requestType: 'deposition' | 'production'
+  // Deposition fields
+  targetName: string | null
+  targetTitle: string | null
   targetPronoun: 'he' | 'she' | 'they'
-  crTestimony: string
-  reasonForCompelling: string
+  crTestimony: string | null
+  reasonForCompelling: string | null
+  // Production fields
+  whatTestified: string | null
+  whatRequested: string | null
 }
 
 interface MotionToCompelData {
@@ -95,6 +100,7 @@ interface MotionToCompelData {
   circuitNumber: string
   county: string
   corporateRepName: string
+  corporateRepTitle?: string
   corporateRepDepositionDate: string
   targets: MotionTarget[]
 }
@@ -281,10 +287,10 @@ function CompelDocumentsResults({
                               2. On or about {data.depositionDate || '[DATE]'}, {data.plaintiffNames.length > 1 ? 'Plaintiffs' : 'Plaintiff'} took the deposition of Defendant&apos;s {data.deponentTitle || '[TITLE]'}, {data.deponentName || '[NAME]'}.
                             </p>
                             <p style={{ textIndent: '2em' }}>
-                              3. During the deposition, {deponentShort} testified that Defendant relied on {docReq.whatTestified || '[TESTIMONY]'}.
+                              3. During the deposition, {docReq.whatTestified || '[TESTIMONY]'}
                             </p>
                             <p style={{ textIndent: '2em' }}>
-                              4. {data.plaintiffNames.length > 1 ? 'Plaintiffs' : 'Plaintiff'} request{data.plaintiffNames.length > 1 ? '' : 's'} {docReq.whatRequested || '[DOCUMENTS REQUESTED]'}.
+                              4. {data.plaintiffNames.length > 1 ? 'Plaintiffs' : 'Plaintiff'} request{data.plaintiffNames.length > 1 ? '' : 's'} {docReq.whatRequested || '[DOCUMENTS REQUESTED]'}
                             </p>
                             <p className="text-center font-bold text-sm pt-2">MEMORANDUM OF LAW</p>
                             <p className="text-xs text-gray-500 dark:text-gray-400 italic text-center">(Discovery scope + sword &amp; shield doctrine — 2 pages of case law)</p>
@@ -390,149 +396,131 @@ function MotionToCompelResults({
         <div>
           <h2 className="text-xl font-bold text-[var(--foreground)] mb-3">
             {data.targets.length} Motion{data.targets.length !== 1 ? 's' : ''} Ready
+            <span className="text-sm font-normal text-[var(--muted-dim)] ml-2">
+              ({data.targets.filter(t => t.requestType === 'deposition').length} deposition, {data.targets.filter(t => t.requestType === 'production').length} document)
+            </span>
           </h2>
           <div className="space-y-3">
             {data.targets.map((target, i) => {
               const isExpanded = expandedIdx === i
+              const isDeposition = target.requestType === 'deposition'
               const mr = honorific(target.targetPronoun)
               const mrLastName = mr ? `${mr} ${(target.targetName || '').split(' ').slice(-1)[0]}` : target.targetName
+              const accentColor = isDeposition ? 'blue' : 'violet'
 
               return (
                 <BlurFade key={i} delay={i * 0.04} duration={0.2}>
                   <div className={`relative overflow-hidden rounded-2xl border transition-all duration-300 ${
                     isExpanded
-                      ? 'border-blue-500/40 bg-[var(--card)] shadow-lg shadow-blue-500/5'
-                      : 'border-[var(--card-border)] bg-gradient-to-r from-blue-50/40 via-[var(--card)] to-[var(--card)] dark:from-blue-900/5 dark:via-[var(--card)] dark:to-[var(--card)] shadow-md'
+                      ? `border-${accentColor}-500/40 bg-[var(--card)] shadow-lg shadow-${accentColor}-500/5`
+                      : `border-[var(--card-border)] bg-gradient-to-r from-${accentColor}-50/40 via-[var(--card)] to-[var(--card)] dark:from-${accentColor}-900/5 dark:via-[var(--card)] dark:to-[var(--card)] shadow-md`
                   }`}>
-                    <div className={`absolute top-0 left-0 w-1 h-full transition-colors ${isExpanded ? 'bg-blue-400' : 'bg-blue-500'}`} />
+                    <div className={`absolute top-0 left-0 w-1 h-full ${isDeposition ? 'bg-blue-500' : 'bg-violet-500'}`} />
 
-                    {/* Collapsed header — always visible */}
+                    {/* Collapsed header */}
                     <button
                       onClick={() => setExpandedIdx(isExpanded ? null : i)}
                       className="w-full text-left p-5 pl-6 flex items-center justify-between gap-4"
                     >
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <p className="text-base font-bold text-[var(--foreground)] truncate">{target.targetName || '[Name]'}</p>
-                          {target.targetTitle && (
+                          <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${isDeposition ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400' : 'bg-violet-500/10 text-violet-600 dark:text-violet-400'}`}>
+                            {isDeposition ? 'Deposition' : 'Documents'}
+                          </span>
+                          <p className="text-base font-bold text-[var(--foreground)] truncate">
+                            {isDeposition ? (target.targetName || '[Name]') : `Document Request #${data.targets.filter((t, j) => t.requestType === 'production' && j <= i).length}`}
+                          </p>
+                          {isDeposition && target.targetTitle && (
                             <span className="text-xs text-blue-600 dark:text-blue-400 font-medium bg-blue-500/10 px-2 py-0.5 rounded-full">{target.targetTitle}</span>
                           )}
                         </div>
                         {!isExpanded && (
-                          <p className="text-sm text-[var(--muted-dim)] mt-1 leading-snug line-clamp-1">{target.crTestimony}</p>
+                          <p className="text-sm text-[var(--muted-dim)] mt-1 leading-snug line-clamp-1">
+                            {isDeposition ? target.crTestimony : target.whatRequested}
+                          </p>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <svg className={`h-5 w-5 text-[var(--muted-dim)] transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-                        </svg>
-                      </div>
+                      <svg className={`h-5 w-5 text-[var(--muted-dim)] transition-transform duration-200 shrink-0 ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                      </svg>
                     </button>
 
-                    {/* Expanded content — editable preview */}
+                    {/* Expanded — different fields per type */}
                     {isExpanded && (
                       <div className="px-6 pb-6 pt-0 space-y-5 border-t border-[var(--card-border)]">
-                        {/* Editable target fields */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
-                          <div className="space-y-1">
-                            <label className="text-[10px] uppercase tracking-[0.15em] text-[var(--muted-dim)] font-bold">Target Name</label>
-                            <input
-                              type="text"
-                              value={target.targetName}
-                              onChange={(e) => updateTarget(i, 'targetName', e.target.value)}
-                              className="w-full text-sm font-semibold text-[var(--foreground)] bg-[var(--background)] border border-[var(--card-border)] rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/20 transition-colors"
-                            />
+                        {isDeposition ? (
+                          /* DEPOSITION fields */
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
+                            <div className="space-y-1">
+                              <label className="text-[10px] uppercase tracking-[0.15em] text-[var(--muted-dim)] font-bold">Target Name</label>
+                              <input type="text" value={target.targetName || ''} onChange={(e) => updateTarget(i, 'targetName', e.target.value)} className="w-full text-sm font-semibold text-[var(--foreground)] bg-[var(--background)] border border-[var(--card-border)] rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/20 transition-colors" />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[10px] uppercase tracking-[0.15em] text-[var(--muted-dim)] font-bold">Title / Role</label>
+                              <input type="text" value={target.targetTitle || ''} onChange={(e) => updateTarget(i, 'targetTitle', e.target.value)} className="w-full text-sm text-[var(--foreground)] bg-[var(--background)] border border-[var(--card-border)] rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/20 transition-colors" />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[10px] uppercase tracking-[0.15em] text-[var(--muted-dim)] font-bold">Pronoun</label>
+                              <select value={target.targetPronoun} onChange={(e) => updateTarget(i, 'targetPronoun', e.target.value)} className="w-full text-sm text-[var(--foreground)] bg-[var(--background)] border border-[var(--card-border)] rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/20 transition-colors">
+                                <option value="he">He (Mr.)</option>
+                                <option value="she">She (Ms.)</option>
+                                <option value="they">They</option>
+                              </select>
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[10px] uppercase tracking-[0.15em] text-[var(--muted-dim)] font-bold">Reason for Compelling</label>
+                              <input type="text" value={target.reasonForCompelling || ''} onChange={(e) => updateTarget(i, 'reasonForCompelling', e.target.value)} className="w-full text-sm text-[var(--foreground)] bg-[var(--background)] border border-[var(--card-border)] rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/20 transition-colors" />
+                            </div>
+                            <div className="space-y-1 sm:col-span-2">
+                              <label className="text-[10px] uppercase tracking-[0.15em] text-[var(--muted-dim)] font-bold">CR Testimony</label>
+                              <textarea value={target.crTestimony || ''} onChange={(e) => updateTarget(i, 'crTestimony', e.target.value)} rows={2} className="w-full text-sm text-[var(--foreground)] bg-[var(--background)] border border-[var(--card-border)] rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/20 transition-colors resize-none" />
+                            </div>
                           </div>
-                          <div className="space-y-1">
-                            <label className="text-[10px] uppercase tracking-[0.15em] text-[var(--muted-dim)] font-bold">Title / Role</label>
-                            <input
-                              type="text"
-                              value={target.targetTitle}
-                              onChange={(e) => updateTarget(i, 'targetTitle', e.target.value)}
-                              className="w-full text-sm text-[var(--foreground)] bg-[var(--background)] border border-[var(--card-border)] rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/20 transition-colors"
-                            />
+                        ) : (
+                          /* PRODUCTION fields */
+                          <div className="grid grid-cols-1 gap-4 pt-4">
+                            <div className="space-y-1">
+                              <label className="text-[10px] uppercase tracking-[0.15em] text-[var(--muted-dim)] font-bold">What Deponent Testified Defendant Relied On (Para 3)</label>
+                              <textarea value={target.whatTestified || ''} onChange={(e) => updateTarget(i, 'whatTestified', e.target.value)} rows={3} className="w-full text-sm text-[var(--foreground)] bg-[var(--background)] border border-[var(--card-border)] rounded-lg px-3 py-2 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500/20 transition-colors resize-none" />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[10px] uppercase tracking-[0.15em] text-[var(--muted-dim)] font-bold">What Documents Plaintiff Is Requesting (Para 4)</label>
+                              <textarea value={target.whatRequested || ''} onChange={(e) => updateTarget(i, 'whatRequested', e.target.value)} rows={3} className="w-full text-sm text-[var(--foreground)] bg-[var(--background)] border border-[var(--card-border)] rounded-lg px-3 py-2 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500/20 transition-colors resize-none" />
+                            </div>
                           </div>
-                          <div className="space-y-1">
-                            <label className="text-[10px] uppercase tracking-[0.15em] text-[var(--muted-dim)] font-bold">Pronoun</label>
-                            <select
-                              value={target.targetPronoun}
-                              onChange={(e) => updateTarget(i, 'targetPronoun', e.target.value)}
-                              className="w-full text-sm text-[var(--foreground)] bg-[var(--background)] border border-[var(--card-border)] rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/20 transition-colors"
-                            >
-                              <option value="he">He (Mr.)</option>
-                              <option value="she">She (Ms.)</option>
-                              <option value="they">They</option>
-                            </select>
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-[10px] uppercase tracking-[0.15em] text-[var(--muted-dim)] font-bold">Reason for Compelling</label>
-                            <input
-                              type="text"
-                              value={target.reasonForCompelling}
-                              onChange={(e) => updateTarget(i, 'reasonForCompelling', e.target.value)}
-                              className="w-full text-sm text-[var(--foreground)] bg-[var(--background)] border border-[var(--card-border)] rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/20 transition-colors"
-                            />
-                          </div>
-                          <div className="space-y-1 sm:col-span-2">
-                            <label className="text-[10px] uppercase tracking-[0.15em] text-[var(--muted-dim)] font-bold">CR Testimony About This Target</label>
-                            <textarea
-                              value={target.crTestimony}
-                              onChange={(e) => updateTarget(i, 'crTestimony', e.target.value)}
-                              rows={2}
-                              className="w-full text-sm text-[var(--foreground)] bg-[var(--background)] border border-[var(--card-border)] rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/20 transition-colors resize-none"
-                            />
-                          </div>
-                        </div>
+                        )}
 
-                        {/* Document preview */}
+                        {/* Document preview — different per type */}
                         <div className="rounded-xl border border-[var(--card-border)] bg-white dark:bg-gray-950 overflow-hidden">
                           <div className="px-4 py-2.5 bg-gray-50 dark:bg-gray-900 border-b border-[var(--card-border)] flex items-center gap-2">
-                            <svg className="h-3.5 w-3.5 text-[var(--muted-dim)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-                            </svg>
-                            <span className="text-[11px] font-semibold text-[var(--muted-dim)] uppercase tracking-wider">Document Preview</span>
+                            <svg className="h-3.5 w-3.5 text-[var(--muted-dim)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+                            <span className="text-[11px] font-semibold text-[var(--muted-dim)] uppercase tracking-wider">Document Preview — {isDeposition ? 'Motion to Compel Deposition' : 'Motion to Compel Documentation'}</span>
                           </div>
                           <div className="p-6 text-gray-800 dark:text-gray-200 space-y-4" style={{ fontFamily: '"Times New Roman", Times, serif', fontSize: '13px', lineHeight: '1.8' }}>
-                            <p className="text-right text-xs">
-                              IN THE CIRCUIT COURT OF THE {data.circuitNumber || '___'}<br />
-                              JUDICIAL CIRCUIT IN AND FOR<br />
-                              {data.county?.toUpperCase() || '___'} COUNTY, FLORIDA
-                            </p>
-
-                            <p>
-                              <span className="font-bold">{data.plaintiffNames.join(' AND ')}</span>, Plaintiff{data.plaintiffNames.length > 1 ? 's' : ''}, v. <span className="font-bold">{data.defendantName}</span>, Defendant.
-                            </p>
-                            <p>Case No.: {data.caseNumber}</p>
-
-                            <p className="text-center font-bold underline text-sm">
-                              PLAINTIFF&apos;S MOTION TO COMPEL THE DEPOSITION OF {target.targetTitle ? `DEFENDANT'S ${target.targetTitle.toUpperCase()}, ` : ''}{(target.targetName || '').toUpperCase()}
-                            </p>
-
-                            <p style={{ textIndent: '2em' }}>
-                              1. Plaintiff has filed this first party action due to damages at the insured property.
-                            </p>
-                            <p style={{ textIndent: '2em' }}>
-                              2. On or about {data.corporateRepDepositionDate || '[DATE]'}, Plaintiff{data.plaintiffNames.length > 1 ? 's' : ''} took the deposition of Defendant&apos;s Corporate Representative, {data.corporateRepName || '[CR NAME]'}.
-                            </p>
-                            <p style={{ textIndent: '2em' }}>
-                              3. During the deposition, {data.corporateRepName || '[CR NAME]'}, testified that {target.targetName || '[TARGET]'} {target.crTestimony || '[CR TESTIMONY]'}.
-                            </p>
-                            <p style={{ textIndent: '2em' }}>
-                              4. Plaintiff is compelling the Deposition of {target.targetName || '[TARGET]'} as {target.reasonForCompelling || '[REASON]'}. {mrLastName} is a necessary fact witness.
-                            </p>
-                            <p style={{ textIndent: '2em' }}>
-                              5. Plaintiff has been prejudiced by the Defendant&apos;s failure to comply with providing deposition dates for {target.targetName || '[TARGET]'}.
-                            </p>
-                            <p style={{ textIndent: '2em' }}>
-                              6. The deposition of {target.targetName || '[TARGET]'} is necessary for the Plaintiff to prosecute their case in chief.
-                            </p>
-                            <p style={{ textIndent: '2em' }}>
-                              7. Based on the foregoing, Plaintiffs&apos; requests that this Honorable Court enter an Order granting Plaintiff&apos;s Motion to Compel the Deposition of {target.targetName || '[TARGET]'}.
-                            </p>
-
-                            <p className="pt-2" style={{ textIndent: '2em' }}>
-                              <span className="font-bold">WHEREFORE</span>, Plaintiff, {data.plaintiffNames.join(' AND ')}, respectfully request an order that {target.targetTitle ? `${target.targetTitle.replace(/^\w/, (c: string) => c.toUpperCase())}, ` : ''}{target.targetName || '[TARGET]'} sit for deposition within fourteen (14) days of the order; and any and all other relief this Honorable Court deems just and equitable.
-                            </p>
+                            {isDeposition ? (
+                              <>
+                                <p className="text-center font-bold underline text-sm">
+                                  PLAINTIFF&apos;S MOTION TO COMPEL THE DEPOSITION OF {target.targetTitle ? `DEFENDANT'S ${target.targetTitle.toUpperCase()}, ` : ''}{(target.targetName || '').toUpperCase()}
+                                </p>
+                                <p style={{ textIndent: '2em' }}>1. Plaintiff has filed this first party action due to damages at the insured property.</p>
+                                <p style={{ textIndent: '2em' }}>2. On or about {data.corporateRepDepositionDate || '[DATE]'}, Plaintiff{data.plaintiffNames.length > 1 ? 's' : ''} took the deposition of Defendant&apos;s {data.corporateRepTitle || 'Corporate Representative'}, {data.corporateRepName || '[NAME]'}.</p>
+                                <p style={{ textIndent: '2em' }}>3. During the deposition, {data.corporateRepName || '[NAME]'} testified that {target.targetName || '[TARGET]'} {target.crTestimony || '[TESTIMONY]'}.</p>
+                                <p style={{ textIndent: '2em' }}>4. Plaintiff is compelling the Deposition of {target.targetName || '[TARGET]'} as {target.reasonForCompelling || '[REASON]'}. {mrLastName} is a necessary fact witness.</p>
+                                <p style={{ textIndent: '2em' }}>5-7. [Standard deposition paragraphs]</p>
+                                <p style={{ textIndent: '2em' }}><span className="font-bold">WHEREFORE</span>, Plaintiff requests {target.targetName} sit for deposition within 14 days.</p>
+                              </>
+                            ) : (
+                              <>
+                                <p className="text-center font-bold underline text-sm">PLAINTIFF&apos;S MOTION TO COMPEL DOCUMENTATION RELIED UPON</p>
+                                <p style={{ textIndent: '2em' }}>1. This case arises from a breach of contract action resulting from Defendant&apos;s failure to pay for the property damages.</p>
+                                <p style={{ textIndent: '2em' }}>2. On or about {data.corporateRepDepositionDate || '[DATE]'}, Plaintiff{data.plaintiffNames.length > 1 ? 's' : ''} took the deposition of Defendant&apos;s {data.corporateRepTitle || 'Corporate Representative'}, {data.corporateRepName || '[NAME]'}.</p>
+                                <p style={{ textIndent: '2em' }}>3. During the deposition, {target.whatTestified || '[TESTIMONY]'}</p>
+                                <p style={{ textIndent: '2em' }}>4. Plaintiff{data.plaintiffNames.length > 1 ? 's' : ''} request{data.plaintiffNames.length > 1 ? '' : 's'} {target.whatRequested || '[DOCUMENTS]'}</p>
+                                <p className="text-center font-bold text-sm pt-2">MEMORANDUM OF LAW</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 italic text-center">(Discovery scope + sword &amp; shield doctrine — 2 pages of case law)</p>
+                                <p style={{ textIndent: '2em' }}><span className="font-bold">WHEREFORE</span>, Plaintiff moves for an Order compelling documentation relied upon by Defendant.</p>
+                              </>
+                            )}
                           </div>
                         </div>
 
@@ -540,10 +528,10 @@ function MotionToCompelResults({
                         <div className="flex justify-end">
                           <button
                             onClick={() => onDownload(data, i, initialData)}
-                            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition-colors shadow-md shadow-blue-500/20"
+                            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-semibold transition-colors shadow-md ${isDeposition ? 'bg-blue-600 hover:bg-blue-500 shadow-blue-500/20' : 'bg-violet-600 hover:bg-violet-500 shadow-violet-500/20'}`}
                           >
                             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
-                            Download This Motion
+                            Download {isDeposition ? 'Deposition Motion' : 'Document Motion'}
                           </button>
                         </div>
                       </div>
@@ -860,9 +848,22 @@ export default function AgentWorkspacePage() {
     } catch (err) {
       updateDoc(docId, {
         status: 'error',
-        error: err instanceof Error ? err.message : 'Unknown error',
+        error: getUserFriendlyError(err instanceof Error ? err.message : 'Unknown error'),
       })
     }
+  }
+
+  function getUserFriendlyError(message: string): string {
+    const msg = message.toLowerCase()
+    if (msg.includes('credit') || msg.includes('billing'))
+      return 'Our processing service is temporarily unavailable. Our team has been notified and is working on it.'
+    if (msg.includes('timeout') || msg.includes('etimedout'))
+      return 'Processing is taking longer than expected. Please try again in a few minutes.'
+    if (msg.includes('no deposition targets'))
+      return "We couldn't find any deposition targets in this document. Please make sure you're uploading the correct follow-up email."
+    if (msg.includes('no text') || msg.includes('extract'))
+      return "We couldn't read the text from this file. Please try uploading a different format (PDF or DOCX)."
+    return 'Something went wrong processing your document. Please try again or contact support.'
   }
 
   function updateMotionDoc(id: string, updates: Partial<MotionToCompelEntry>) {
@@ -902,26 +903,68 @@ export default function AgentWorkspacePage() {
     } catch (err) {
       updateMotionDoc(docId, {
         status: 'error',
-        error: err instanceof Error ? err.message : 'Unknown error',
+        error: getUserFriendlyError(err instanceof Error ? err.message : 'Unknown error'),
       })
     }
   }
 
   async function handleDownloadMotion(data: MotionToCompelData, targetIndex: number, originalData?: MotionToCompelData) {
     try {
-      const res = await fetch('/api/agents/motion-to-compel/generate-docx', {
+      const target = data.targets[targetIndex]
+      const isProduction = target?.requestType === 'production'
+
+      // Route to correct DOCX generator based on request type
+      const endpoint = isProduction
+        ? '/api/agents/compel-documents/generate-docx'
+        : '/api/agents/motion-to-compel/generate-docx'
+
+      // For production motions, transform data to CompelDocumentsData format
+      const body = isProduction
+        ? {
+            data: {
+              plaintiffNames: data.plaintiffNames,
+              defendantName: data.defendantName,
+              caseNumber: data.caseNumber,
+              circuitNumber: data.circuitNumber,
+              county: data.county,
+              deponentName: data.corporateRepName,
+              deponentTitle: data.corporateRepTitle || 'Corporate Representative',
+              deponentPronoun: 'they' as const,
+              depositionDate: data.corporateRepDepositionDate,
+              documentRequests: [{ whatTestified: target.whatTestified || '', whatRequested: target.whatRequested || '' }],
+            },
+            requestIndex: 0,
+            originalData: originalData ? {
+              plaintiffNames: originalData.plaintiffNames,
+              defendantName: originalData.defendantName,
+              caseNumber: originalData.caseNumber,
+              circuitNumber: originalData.circuitNumber,
+              county: originalData.county,
+              deponentName: originalData.corporateRepName,
+              deponentTitle: originalData.corporateRepTitle || 'Corporate Representative',
+              deponentPronoun: 'they' as const,
+              depositionDate: originalData.corporateRepDepositionDate,
+              documentRequests: [{ whatTestified: originalData.targets[targetIndex]?.whatTestified || '', whatRequested: originalData.targets[targetIndex]?.whatRequested || '' }],
+            } : undefined,
+          }
+        : { data, targetIndex, originalData }
+
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data, targetIndex, originalData }),
+        body: JSON.stringify(body),
       })
       if (!res.ok) throw new Error('Failed to generate document')
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      const target = data.targets[targetIndex]
-      const targetLast = target?.targetName?.split(' ').slice(-1)[0] || 'Motion'
-      a.download = `Motion to Compel - ${targetLast}.docx`
+      if (isProduction) {
+        a.download = `MTC Documentation.docx`
+      } else {
+        const targetLast = target?.targetName?.split(' ').slice(-1)[0] || 'Motion'
+        a.download = `Motion to Compel - ${targetLast}.docx`
+      }
       a.click()
       URL.revokeObjectURL(url)
     } catch (err) {
@@ -968,7 +1011,7 @@ export default function AgentWorkspacePage() {
     } catch (err) {
       updateCompelDocsDoc(docId, {
         status: 'error',
-        error: err instanceof Error ? err.message : 'Unknown error',
+        error: getUserFriendlyError(err instanceof Error ? err.message : 'Unknown error'),
       })
     }
   }
@@ -1536,6 +1579,9 @@ export default function AgentWorkspacePage() {
                                         {doc.status === 'done' && doc.result ? (
                                           <span className="text-green-600 dark:text-green-400">
                                             {doc.result.targets.length} motion{doc.result.targets.length !== 1 ? 's' : ''} ready
+                                            {doc.result.targets.some(t => t.requestType === 'production') && doc.result.targets.some(t => t.requestType === 'deposition') && (
+                                              <span className="text-[var(--muted-dim)]"> ({doc.result.targets.filter(t => t.requestType === 'deposition').length} depo, {doc.result.targets.filter(t => t.requestType === 'production').length} docs)</span>
+                                            )}
                                           </span>
                                         ) : doc.status === 'error' ? (
                                           <span className="text-red-500">{doc.error}</span>

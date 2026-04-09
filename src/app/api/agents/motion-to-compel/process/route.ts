@@ -2,14 +2,20 @@ import { createClient } from '@/lib/supabase/server'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
 import { fetchWithRetry } from '@/lib/fetch-retry'
 import { logEvent } from '@/lib/analytics'
+import { autoDiagnose } from '@/lib/auto-diagnose'
 import { NextRequest, NextResponse } from 'next/server'
 
 export interface MotionTarget {
-  targetName: string
-  targetTitle: string
+  requestType: 'deposition' | 'production'
+  // Deposition fields
+  targetName: string | null
+  targetTitle: string | null
   targetPronoun: 'he' | 'she' | 'they'
-  crTestimony: string
-  reasonForCompelling: string
+  crTestimony: string | null
+  reasonForCompelling: string | null
+  // Production fields
+  whatTestified: string | null
+  whatRequested: string | null
 }
 
 export interface MotionToCompelData {
@@ -19,6 +25,7 @@ export interface MotionToCompelData {
   circuitNumber: string
   county: string
   corporateRepName: string
+  corporateRepTitle?: string
   corporateRepDepositionDate: string
   targets: MotionTarget[]
 }
@@ -78,6 +85,7 @@ export async function POST(request: NextRequest) {
       }).eq('id', docRecordId).then(() => {})
     }
 
+    autoDiagnose({ workflow: 'motion-to-compel', errorMessage: `Webhook failed: ${errorMsg}`, fileName, rawText: text, docRecordId, webhookUrl: n8nUrl })
     return NextResponse.json({ error: 'Processing service unavailable. Please try again.' }, { status: 502 })
   }
 
@@ -93,6 +101,7 @@ export async function POST(request: NextRequest) {
       }).eq('id', docRecordId).then(() => {})
     }
 
+    autoDiagnose({ workflow: 'motion-to-compel', errorMessage: `n8n error ${n8nRes.status}: ${errText}`, fileName, rawText: text, docRecordId, webhookUrl: n8nUrl })
     return NextResponse.json({ error: `Processing failed: ${errText}` }, { status: 502 })
   }
 
@@ -106,6 +115,7 @@ export async function POST(request: NextRequest) {
         n8n_response: result,
       }).eq('id', docRecordId).then(() => {})
     }
+    autoDiagnose({ workflow: 'motion-to-compel', errorMessage: 'No deposition targets found in the document', fileName, rawText: text, docRecordId, webhookUrl: n8nUrl })
     return NextResponse.json({ error: 'No deposition targets found in the document' }, { status: 422 })
   }
 

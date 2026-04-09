@@ -118,12 +118,12 @@ function buildCompelDocumentsMotion(data: CompelDocumentsData, docReq: DocumentR
 
   // ── Para 3
   children.push(para([
-    tr(`3.\tDuring the deposition, ${mr ? mr + ' ' + deponentName.split(' ').slice(-1)[0] : deponentName} testified that Defendant relied on ${docReq.whatTestified}.`),
+    tr(`3.\tDuring the deposition, ${docReq.whatTestified}`),
   ], { after: 200, firstLine: HALF_INCH }))
 
   // ── Para 4
   children.push(para([
-    tr(`4.\t${plaintiffLabel} request${data.plaintiffNames.length > 1 ? '' : 's'} ${docReq.whatRequested}.`),
+    tr(`4.\t${plaintiffLabel} request${data.plaintiffNames.length > 1 ? '' : 's'} ${docReq.whatRequested}`),
   ], { after: 200, firstLine: HALF_INCH }))
 
   // ══════════════════════════════════════════════════════════════════════
