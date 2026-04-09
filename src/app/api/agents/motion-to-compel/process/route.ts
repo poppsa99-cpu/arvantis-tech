@@ -32,10 +32,7 @@ export async function POST(request: NextRequest) {
 
   const startTime = Date.now()
 
-  const formData = await request.formData()
-  const text = formData.get('text') as string | null
-  const file = formData.get('file') as File | null
-  const fileName = (formData.get('fileName') as string) || file?.name || 'unknown'
+  const { text, fileName = 'unknown' } = await request.json()
 
   if (!text) {
     return NextResponse.json({ error: 'No text provided' }, { status: 400 })
@@ -48,39 +45,12 @@ export async function POST(request: NextRequest) {
 
   const adminSupabase = getSupabaseAdmin()
 
-  // Upload original file to Supabase Storage for debugging
-  let fileUrl: string | null = null
-  if (file) {
-    try {
-      const buffer = Buffer.from(await file.arrayBuffer())
-      const ext = fileName.split('.').pop() || 'pdf'
-      const storagePath = `motion-to-compel/${user.id}/${Date.now()}-${fileName.replace(/[^a-zA-Z0-9._-]/g, '_')}`
-
-      const { data: uploadData, error: uploadError } = await adminSupabase.storage
-        .from('uploads')
-        .upload(storagePath, buffer, {
-          contentType: file.type || 'application/octet-stream',
-          upsert: false,
-        })
-
-      if (!uploadError && uploadData) {
-        const { data: urlData } = adminSupabase.storage
-          .from('uploads')
-          .getPublicUrl(storagePath)
-        fileUrl = urlData?.publicUrl || storagePath
-      }
-    } catch (err) {
-      console.error('Failed to upload original file:', err)
-    }
-  }
-
   // Save submission immediately so we have it even if n8n fails
   let docRecordId: string | null = null
   try {
     const { data: insertData } = await adminSupabase.from('motion_to_compel_documents').insert({
       user_id: user.id,
       file_name: fileName,
-      file_url: fileUrl,
       raw_text: text,
       status: 'processing',
     }).select('id').single()

@@ -646,14 +646,10 @@ export default function AgentWorkspacePage() {
       const { text } = await extractRes.json()
       updateMotionDoc(docId, { status: 'processing' })
 
-      const processForm = new FormData()
-      processForm.append('text', text)
-      processForm.append('file', file)
-      processForm.append('fileName', file.name)
-
       const processRes = await fetch('/api/agents/motion-to-compel/process', {
         method: 'POST',
-        body: processForm,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, fileName: file.name }),
       })
 
       if (!processRes.ok) {
