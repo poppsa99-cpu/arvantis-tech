@@ -2,13 +2,14 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { BlurFade } from '@/components/ui/blur-fade'
 import { WorkflowTutorial } from '@/components/workflow-tutorial'
+import { EmailFormatGuide } from '@/components/email-format-guide'
 
 interface DefenseResult {
   defenseNumber: number
@@ -107,14 +108,35 @@ interface MotionToCompelEntry {
 }
 
 function MotionToCompelResults({
-  data,
+  data: initialData,
   onBack,
   onDownload,
 }: {
   data: MotionToCompelData
   onBack: () => void
-  onDownload: (data: MotionToCompelData, i: number) => void
+  onDownload: (data: MotionToCompelData, i: number, originalData?: MotionToCompelData) => void
 }) {
+  const [data, setData] = useState<MotionToCompelData>(initialData)
+  const [expandedIdx, setExpandedIdx] = useState<number | null>(null)
+
+  function updateTarget(idx: number, field: keyof MotionTarget, value: string) {
+    setData(prev => {
+      const newTargets = [...prev.targets]
+      newTargets[idx] = { ...newTargets[idx], [field]: value }
+      return { ...prev, targets: newTargets }
+    })
+  }
+
+  function updateCaseField<K extends keyof MotionToCompelData>(field: K, value: MotionToCompelData[K]) {
+    setData(prev => ({ ...prev, [field]: value }))
+  }
+
+  function honorific(pronoun: 'he' | 'she' | 'they') {
+    if (pronoun === 'he') return 'Mr.'
+    if (pronoun === 'she') return 'Ms.'
+    return ''
+  }
+
   return (
     <BlurFade delay={0.05} duration={0.3}>
       <div className="space-y-6">
@@ -126,56 +148,201 @@ function MotionToCompelResults({
           Back to uploads
         </button>
 
+        {/* Editable Case Summary */}
         <div className="relative overflow-hidden rounded-2xl border border-[var(--card-border)] bg-gradient-to-br from-[var(--card)] to-[var(--background)] shadow-lg dark:shadow-2xl">
           <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-blue-500 to-blue-600" />
           <div className="p-6 pl-7">
             <h3 className="text-xl font-bold text-[var(--foreground)] mb-4">Case Summary</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {[
-                { label: 'Plaintiff', value: data.plaintiffNames.join(' and ') },
-                { label: 'Defendant', value: data.defendantName },
-                { label: 'Case No.', value: data.caseNumber },
-                { label: 'Court', value: data.circuitNumber && data.county ? `${data.circuitNumber} Circuit, ${data.county}` : data.county },
-                { label: 'Corporate Rep Deposed', value: data.corporateRepName },
-                { label: 'Deposition Date', value: data.corporateRepDepositionDate },
-              ].map(({ label, value }) => (
-                <div key={label} className="space-y-0.5">
+                { label: 'Plaintiff', value: data.plaintiffNames.join(' and '), onChange: (v: string) => updateCaseField('plaintiffNames', v.split(/\s+and\s+/i)) },
+                { label: 'Defendant', value: data.defendantName, onChange: (v: string) => updateCaseField('defendantName', v) },
+                { label: 'Case No.', value: data.caseNumber, onChange: (v: string) => updateCaseField('caseNumber', v) },
+                { label: 'Circuit', value: data.circuitNumber, onChange: (v: string) => updateCaseField('circuitNumber', v) },
+                { label: 'County', value: data.county, onChange: (v: string) => updateCaseField('county', v) },
+                { label: 'Corporate Rep', value: data.corporateRepName, onChange: (v: string) => updateCaseField('corporateRepName', v) },
+                { label: 'Deposition Date', value: data.corporateRepDepositionDate, onChange: (v: string) => updateCaseField('corporateRepDepositionDate', v) },
+              ].map(({ label, value, onChange }) => (
+                <div key={label} className="space-y-1">
                   <span className="text-[11px] uppercase tracking-[0.15em] text-blue-600 dark:text-blue-400 font-bold">{label}</span>
-                  <p className="text-sm font-semibold text-[var(--foreground)]">{value || '—'}</p>
+                  <input
+                    type="text"
+                    value={value || ''}
+                    onChange={(e) => onChange(e.target.value)}
+                    className="w-full text-sm font-semibold text-[var(--foreground)] bg-transparent border-b border-transparent hover:border-[var(--card-border)] focus:border-blue-500 focus:outline-none py-0.5 transition-colors"
+                  />
                 </div>
               ))}
             </div>
           </div>
         </div>
 
+        {/* Expandable Motion Cards */}
         <div>
           <h2 className="text-xl font-bold text-[var(--foreground)] mb-3">
-            {data.targets.length} Motion{data.targets.length !== 1 ? 's' : ''} Ready to Download
+            {data.targets.length} Motion{data.targets.length !== 1 ? 's' : ''} Ready
           </h2>
           <div className="space-y-3">
-            {data.targets.map((target, i) => (
-              <BlurFade key={i} delay={i * 0.04} duration={0.2}>
-                <div className="relative overflow-hidden rounded-2xl border border-[var(--card-border)] bg-gradient-to-r from-blue-50/40 via-[var(--card)] to-[var(--card)] dark:from-blue-900/5 dark:via-[var(--card)] dark:to-[var(--card)] shadow-md">
-                  <div className="absolute top-0 left-0 w-1 h-full bg-blue-500" />
-                  <div className="p-5 pl-6 flex items-start justify-between gap-4">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-base font-bold text-[var(--foreground)] truncate">{target.targetName}</p>
-                      {target.targetTitle && (
-                        <p className="text-sm text-blue-600 dark:text-blue-400 font-medium mt-0.5">{target.targetTitle}</p>
-                      )}
-                      <p className="text-sm text-[var(--muted-dim)] mt-1 leading-snug line-clamp-2">{target.crTestimony}</p>
-                    </div>
+            {data.targets.map((target, i) => {
+              const isExpanded = expandedIdx === i
+              const mr = honorific(target.targetPronoun)
+              const mrLastName = mr ? `${mr} ${(target.targetName || '').split(' ').slice(-1)[0]}` : target.targetName
+
+              return (
+                <BlurFade key={i} delay={i * 0.04} duration={0.2}>
+                  <div className={`relative overflow-hidden rounded-2xl border transition-all duration-300 ${
+                    isExpanded
+                      ? 'border-blue-500/40 bg-[var(--card)] shadow-lg shadow-blue-500/5'
+                      : 'border-[var(--card-border)] bg-gradient-to-r from-blue-50/40 via-[var(--card)] to-[var(--card)] dark:from-blue-900/5 dark:via-[var(--card)] dark:to-[var(--card)] shadow-md'
+                  }`}>
+                    <div className={`absolute top-0 left-0 w-1 h-full transition-colors ${isExpanded ? 'bg-blue-400' : 'bg-blue-500'}`} />
+
+                    {/* Collapsed header — always visible */}
                     <button
-                      onClick={() => onDownload(data, i)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold shrink-0 transition-colors"
+                      onClick={() => setExpandedIdx(isExpanded ? null : i)}
+                      className="w-full text-left p-5 pl-6 flex items-center justify-between gap-4"
                     >
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
-                      Download Motion
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="text-base font-bold text-[var(--foreground)] truncate">{target.targetName || '[Name]'}</p>
+                          {target.targetTitle && (
+                            <span className="text-xs text-blue-600 dark:text-blue-400 font-medium bg-blue-500/10 px-2 py-0.5 rounded-full">{target.targetTitle}</span>
+                          )}
+                        </div>
+                        {!isExpanded && (
+                          <p className="text-sm text-[var(--muted-dim)] mt-1 leading-snug line-clamp-1">{target.crTestimony}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <svg className={`h-5 w-5 text-[var(--muted-dim)] transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                        </svg>
+                      </div>
                     </button>
+
+                    {/* Expanded content — editable preview */}
+                    {isExpanded && (
+                      <div className="px-6 pb-6 pt-0 space-y-5 border-t border-[var(--card-border)]">
+                        {/* Editable target fields */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
+                          <div className="space-y-1">
+                            <label className="text-[10px] uppercase tracking-[0.15em] text-[var(--muted-dim)] font-bold">Target Name</label>
+                            <input
+                              type="text"
+                              value={target.targetName}
+                              onChange={(e) => updateTarget(i, 'targetName', e.target.value)}
+                              className="w-full text-sm font-semibold text-[var(--foreground)] bg-[var(--background)] border border-[var(--card-border)] rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/20 transition-colors"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[10px] uppercase tracking-[0.15em] text-[var(--muted-dim)] font-bold">Title / Role</label>
+                            <input
+                              type="text"
+                              value={target.targetTitle}
+                              onChange={(e) => updateTarget(i, 'targetTitle', e.target.value)}
+                              className="w-full text-sm text-[var(--foreground)] bg-[var(--background)] border border-[var(--card-border)] rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/20 transition-colors"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[10px] uppercase tracking-[0.15em] text-[var(--muted-dim)] font-bold">Pronoun</label>
+                            <select
+                              value={target.targetPronoun}
+                              onChange={(e) => updateTarget(i, 'targetPronoun', e.target.value)}
+                              className="w-full text-sm text-[var(--foreground)] bg-[var(--background)] border border-[var(--card-border)] rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/20 transition-colors"
+                            >
+                              <option value="he">He (Mr.)</option>
+                              <option value="she">She (Ms.)</option>
+                              <option value="they">They</option>
+                            </select>
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[10px] uppercase tracking-[0.15em] text-[var(--muted-dim)] font-bold">Reason for Compelling</label>
+                            <input
+                              type="text"
+                              value={target.reasonForCompelling}
+                              onChange={(e) => updateTarget(i, 'reasonForCompelling', e.target.value)}
+                              className="w-full text-sm text-[var(--foreground)] bg-[var(--background)] border border-[var(--card-border)] rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/20 transition-colors"
+                            />
+                          </div>
+                          <div className="space-y-1 sm:col-span-2">
+                            <label className="text-[10px] uppercase tracking-[0.15em] text-[var(--muted-dim)] font-bold">CR Testimony About This Target</label>
+                            <textarea
+                              value={target.crTestimony}
+                              onChange={(e) => updateTarget(i, 'crTestimony', e.target.value)}
+                              rows={2}
+                              className="w-full text-sm text-[var(--foreground)] bg-[var(--background)] border border-[var(--card-border)] rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/20 transition-colors resize-none"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Document preview */}
+                        <div className="rounded-xl border border-[var(--card-border)] bg-white dark:bg-gray-950 overflow-hidden">
+                          <div className="px-4 py-2.5 bg-gray-50 dark:bg-gray-900 border-b border-[var(--card-border)] flex items-center gap-2">
+                            <svg className="h-3.5 w-3.5 text-[var(--muted-dim)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                            </svg>
+                            <span className="text-[11px] font-semibold text-[var(--muted-dim)] uppercase tracking-wider">Document Preview</span>
+                          </div>
+                          <div className="p-6 text-gray-800 dark:text-gray-200 space-y-4" style={{ fontFamily: '"Times New Roman", Times, serif', fontSize: '13px', lineHeight: '1.8' }}>
+                            <p className="text-right text-xs">
+                              IN THE CIRCUIT COURT OF THE {data.circuitNumber || '___'}<br />
+                              JUDICIAL CIRCUIT IN AND FOR<br />
+                              {data.county?.toUpperCase() || '___'} COUNTY, FLORIDA
+                            </p>
+
+                            <p>
+                              <span className="font-bold">{data.plaintiffNames.join(' AND ')}</span>, Plaintiff{data.plaintiffNames.length > 1 ? 's' : ''}, v. <span className="font-bold">{data.defendantName}</span>, Defendant.
+                            </p>
+                            <p>Case No.: {data.caseNumber}</p>
+
+                            <p className="text-center font-bold underline text-sm">
+                              PLAINTIFF&apos;S MOTION TO COMPEL THE DEPOSITION OF {target.targetTitle ? `DEFENDANT'S ${target.targetTitle.toUpperCase()}, ` : ''}{(target.targetName || '').toUpperCase()}
+                            </p>
+
+                            <p style={{ textIndent: '2em' }}>
+                              1. Plaintiff has filed this first party action due to damages at the insured property.
+                            </p>
+                            <p style={{ textIndent: '2em' }}>
+                              2. On or about {data.corporateRepDepositionDate || '[DATE]'}, Plaintiff{data.plaintiffNames.length > 1 ? 's' : ''} took the deposition of Defendant&apos;s Corporate Representative, {data.corporateRepName || '[CR NAME]'}.
+                            </p>
+                            <p style={{ textIndent: '2em' }}>
+                              3. During the deposition, {data.corporateRepName || '[CR NAME]'}, testified that {target.targetName || '[TARGET]'} {target.crTestimony || '[CR TESTIMONY]'}.
+                            </p>
+                            <p style={{ textIndent: '2em' }}>
+                              4. Plaintiff is compelling the Deposition of {target.targetName || '[TARGET]'} as {target.reasonForCompelling || '[REASON]'}. {mrLastName} is a necessary fact witness.
+                            </p>
+                            <p style={{ textIndent: '2em' }}>
+                              5. Plaintiff has been prejudiced by the Defendant&apos;s failure to comply with providing deposition dates for {target.targetName || '[TARGET]'}.
+                            </p>
+                            <p style={{ textIndent: '2em' }}>
+                              6. The deposition of {target.targetName || '[TARGET]'} is necessary for the Plaintiff to prosecute their case in chief.
+                            </p>
+                            <p style={{ textIndent: '2em' }}>
+                              7. Based on the foregoing, Plaintiffs&apos; requests that this Honorable Court enter an Order granting Plaintiff&apos;s Motion to Compel the Deposition of {target.targetName || '[TARGET]'}.
+                            </p>
+
+                            <p className="pt-2" style={{ textIndent: '2em' }}>
+                              <span className="font-bold">WHEREFORE</span>, Plaintiff, {data.plaintiffNames.join(' AND ')}, respectfully request an order that {target.targetTitle ? `${target.targetTitle.replace(/^\w/, (c: string) => c.toUpperCase())}, ` : ''}{target.targetName || '[TARGET]'} sit for deposition within fourteen (14) days of the order; and any and all other relief this Honorable Court deems just and equitable.
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Download button */}
+                        <div className="flex justify-end">
+                          <button
+                            onClick={() => onDownload(data, i, initialData)}
+                            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition-colors shadow-md shadow-blue-500/20"
+                          >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+                            Download This Motion
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
-              </BlurFade>
-            ))}
+                </BlurFade>
+              )
+            })}
           </div>
         </div>
       </div>
@@ -230,9 +397,10 @@ export default function AgentWorkspacePage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const mainRef = useRef<HTMLElement>(null)
   const router = useRouter()
+  const params = useParams()
   const supabase = createClient()
 
-  // Fetch user info on mount
+  // Fetch user info and detect which agent was opened
   useEffect(() => {
     async function fetchUser() {
       const { data: { user } } = await supabase.auth.getUser()
@@ -244,6 +412,20 @@ export default function AgentWorkspacePage() {
         .eq('id', user.id)
         .maybeSingle()
       setIsAdmin(profile?.is_admin === true)
+
+      // Auto-select doc type based on which agent card was clicked
+      if (params.id) {
+        const { data: agent } = await supabase
+          .from('organization_agents')
+          .select('agent_template:agent_templates(slug)')
+          .eq('id', params.id)
+          .maybeSingle()
+        const tmpl = agent?.agent_template as unknown
+        const slug = Array.isArray(tmpl) ? (tmpl[0] as { slug: string })?.slug : (tmpl as { slug: string } | null)?.slug
+        if (slug === 'motion-to-compel') {
+          setSelectedDocType('motion-to-compel')
+        }
+      }
     }
     fetchUser()
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -464,10 +646,14 @@ export default function AgentWorkspacePage() {
       const { text } = await extractRes.json()
       updateMotionDoc(docId, { status: 'processing' })
 
+      const processForm = new FormData()
+      processForm.append('text', text)
+      processForm.append('file', file)
+      processForm.append('fileName', file.name)
+
       const processRes = await fetch('/api/agents/motion-to-compel/process', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
+        body: processForm,
       })
 
       if (!processRes.ok) {
@@ -488,12 +674,12 @@ export default function AgentWorkspacePage() {
     }
   }
 
-  async function handleDownloadMotion(data: MotionToCompelData, targetIndex: number) {
+  async function handleDownloadMotion(data: MotionToCompelData, targetIndex: number, originalData?: MotionToCompelData) {
     try {
       const res = await fetch('/api/agents/motion-to-compel/generate-docx', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data, targetIndex }),
+        body: JSON.stringify({ data, targetIndex, originalData }),
       })
       if (!res.ok) throw new Error('Failed to generate document')
       const blob = await res.blob()
@@ -834,33 +1020,38 @@ export default function AgentWorkspacePage() {
             <Badge variant="outline" className="text-[10px] uppercase tracking-wider font-semibold text-green-600 dark:text-green-400 border-green-500/30 bg-green-500/5 hidden sm:inline-flex">
               Active
             </Badge>
-            <WorkflowTutorial
-              workflowId="motion-to-strike"
-              loomUrl="https://www.loom.com/share/229c78b9ec364344a6e6eb8ace22a850"
-              title="Motion to Strike & Reply/Avoidance"
-              steps={[
-                {
-                  icon: '📄',
-                  title: 'Upload the Defendant\'s Answer',
-                  description: 'Drag and drop or click to browse for the defendant\'s Answer and Affirmative Defenses document. We accept both PDF and DOCX files.',
-                },
-                {
-                  icon: '🔍',
-                  title: 'AI Extracts & Matches Defenses',
-                  description: 'Our AI reads every affirmative defense, identifies the category, and matches it against our database of proven legal responses specific to Florida insurance law.',
-                },
-                {
-                  icon: '⚖️',
-                  title: 'Review the Matches',
-                  description: 'Each defense shows as "Matched" (green) or "Needs Review" (amber). For unmatched defenses, use the dropdown to manually assign a response category.',
-                },
-                {
-                  icon: '📝',
-                  title: 'Download Your Reply Document',
-                  description: 'Once satisfied with the matches, download the fully formatted Motion to Strike & Reply/Avoidance as a Word document — ready for your review and filing.',
-                },
-              ]}
-            />
+            {selectedDocType === 'motion-to-strike' && (
+              <WorkflowTutorial
+                workflowId="motion-to-strike"
+                loomUrl="https://www.loom.com/share/229c78b9ec364344a6e6eb8ace22a850"
+                title="Motion to Strike & Reply/Avoidance"
+                steps={[
+                  {
+                    icon: '📄',
+                    title: 'Upload the Defendant\'s Answer',
+                    description: 'Drag and drop or click to browse for the defendant\'s Answer and Affirmative Defenses document. We accept both PDF and DOCX files.',
+                  },
+                  {
+                    icon: '🔍',
+                    title: 'AI Extracts & Matches Defenses',
+                    description: 'Our AI reads every affirmative defense, identifies the category, and matches it against our database of proven legal responses specific to Florida insurance law.',
+                  },
+                  {
+                    icon: '⚖️',
+                    title: 'Review the Matches',
+                    description: 'Each defense shows as "Matched" (green) or "Needs Review" (amber). For unmatched defenses, use the dropdown to manually assign a response category.',
+                  },
+                  {
+                    icon: '📝',
+                    title: 'Download Your Reply Document',
+                    description: 'Once satisfied with the matches, download the fully formatted Motion to Strike & Reply/Avoidance as a Word document — ready for your review and filing.',
+                  },
+                ]}
+              />
+            )}
+            {selectedDocType === 'motion-to-compel' && (
+              <EmailFormatGuide workflowId="motion-to-compel" />
+            )}
           </div>
 
           {docs.length > 0 && (
@@ -985,7 +1176,9 @@ export default function AgentWorkspacePage() {
                           <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
                         </svg>
                         <p className="text-sm text-[var(--muted-dim)]">
-                          Upload a defendant&apos;s answer with affirmative defenses to generate a reply document
+                          {selectedDocType === 'motion-to-compel'
+                            ? 'Upload a deposition request follow-up email to generate motions to compel'
+                            : 'Upload a defendant\u2019s answer with affirmative defenses to generate a reply document'}
                         </p>
                       </div>
                     </div>
@@ -1453,17 +1646,25 @@ export default function AgentWorkspacePage() {
                             className="text-[13px] sm:text-[14px] text-gray-900 dark:text-gray-100 whitespace-pre-line leading-[1.8]"
                             style={{ fontFamily: '"Times New Roman", Times, Georgia, serif' }}
                           >
-                            {selectedDoc.result.reply.split(/\[BLOCKQUOTE\]|\[\/BLOCKQUOTE\]/).map((segment: string, i: number) =>
+                            {selectedDoc.result.reply
+                              .replace(/\[BLOCKQUOTE\]/g, '[BQ]').replace(/\[\/BLOCKQUOTE\]/g, '[/BQ]')
+                              .split(/\[BQ\]|\[\/BQ\]/).map((segment: string, i: number) =>
                               i % 2 === 1 ? (
                                 <div
                                   key={i}
                                   className="my-3 leading-[1.4]"
                                   style={{ marginLeft: '0.5in', marginRight: '0.5in' }}
                                 >
-                                  {segment.trim()}
+                                  {segment.trim().split(/\[I\]|\[\/I\]/).map((part: string, j: number) =>
+                                    j % 2 === 1 ? <em key={j}>{part}</em> : <span key={j}>{part}</span>
+                                  )}
                                 </div>
                               ) : (
-                                <span key={i}>{segment}</span>
+                                <span key={i}>
+                                  {segment.split(/\[I\]|\[\/I\]/).map((part: string, j: number) =>
+                                    j % 2 === 1 ? <em key={j}>{part}</em> : <span key={j}>{part}</span>
+                                  )}
+                                </span>
                               )
                             )}
                           </div>
