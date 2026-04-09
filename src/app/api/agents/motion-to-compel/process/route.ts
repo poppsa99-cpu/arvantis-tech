@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
       await adminSupabase.from('motion_to_compel_documents').update({
         status: 'error',
         error_message: `Webhook failed: ${errorMsg}`,
-      }).eq('id', docRecordId).catch(() => {})
+      }).eq('id', docRecordId).then(() => {})
     }
 
     return NextResponse.json({ error: 'Processing service unavailable. Please try again.' }, { status: 502 })
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
       await adminSupabase.from('motion_to_compel_documents').update({
         status: 'error',
         error_message: `n8n error ${n8nRes.status}: ${errText.slice(0, 2000)}`,
-      }).eq('id', docRecordId).catch(() => {})
+      }).eq('id', docRecordId).then(() => {})
     }
 
     return NextResponse.json({ error: `Processing failed: ${errText}` }, { status: 502 })
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
         status: 'error',
         error_message: 'No deposition targets found in the document',
         n8n_response: result,
-      }).eq('id', docRecordId).catch(() => {})
+      }).eq('id', docRecordId).then(() => {})
     }
     return NextResponse.json({ error: 'No deposition targets found in the document' }, { status: 422 })
   }

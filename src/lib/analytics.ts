@@ -15,7 +15,7 @@ export type EventType =
 interface LogEventParams {
   userId: string
   event: EventType
-  workflow: 'motion-to-strike' | 'motion-to-compel'
+  workflow: 'motion-to-strike' | 'motion-to-compel' | 'compel-documents'
   metadata?: Record<string, unknown>
   error?: string
   durationMs?: number
@@ -49,7 +49,7 @@ export async function logEvent(params: LogEventParams): Promise<void> {
  */
 export async function logDiff(params: {
   userId: string
-  workflow: 'motion-to-strike' | 'motion-to-compel'
+  workflow: 'motion-to-strike' | 'motion-to-compel' | 'compel-documents'
   field: string
   aiValue: unknown
   humanValue: unknown
