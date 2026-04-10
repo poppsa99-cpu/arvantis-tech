@@ -330,20 +330,18 @@ export default function WorkflowLogsPage() {
                             </div>
                           )}
 
-                          {/* Error Message */}
-                          {log.status === 'error' && log.error_message && (
+                          {log.status === 'error' && log.error_message ? (
                             <div>
                               <h4 className="text-xs font-medium text-red-400 uppercase tracking-wider mb-1">
                                 Error Message
                               </h4>
                               <div className="text-xs text-red-400 bg-red-500/5 rounded-lg p-3 border border-red-500/20">
-                                {log.error_message}
+                                {String(log.error_message)}
                               </div>
                             </div>
-                          )}
+                          ) : null}
 
-                          {/* n8n Response */}
-                          {log.n8n_response && (
+                          {log.n8n_response ? (
                             <div>
                               <h4 className="text-xs font-medium text-[var(--admin-text-dim)] uppercase tracking-wider mb-1">
                                 n8n Response
