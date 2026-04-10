@@ -350,7 +350,7 @@ export default function WorkflowLogsPage() {
                                 {JSON.stringify(log.n8n_response, null, 2)}
                               </pre>
                             </div>
-                          )}
+                          ) : null}
 
                           {/* Retry Button */}
                           {log.status === 'error' && (
