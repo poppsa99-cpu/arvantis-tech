@@ -21,7 +21,7 @@ const categoryColors: Record<string, string> = {
 }
 
 // Workflow slugs — templates that are full document-processing workflows
-const WORKFLOW_SLUGS = ['document', 'motion-to-compel', 'compel-documents']
+const WORKFLOW_SLUGS = ['document', 'motion-to-compel']
 
 interface Deployment {
   id: string
