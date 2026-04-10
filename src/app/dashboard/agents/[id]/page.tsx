@@ -614,7 +614,7 @@ export default function AgentWorkspacePage() {
       const processRes = await fetch('/api/agents/process', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text, fileName: file.name }),
       })
 
       if (!processRes.ok) {

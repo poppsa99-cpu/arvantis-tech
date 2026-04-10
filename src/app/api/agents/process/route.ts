@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
   }
 
   const startTime = Date.now()
-  const { text } = await request.json()
+  const { text, fileName = 'unknown' } = await request.json()
   if (!text) {
     return NextResponse.json({ error: 'No text provided' }, { status: 400 })
   }
@@ -23,6 +23,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'N8N_WEBHOOK_URL not configured' }, { status: 500 })
   }
 
+  const adminSupabase = getSupabaseAdmin()
+
+  // Save submission immediately so we have it even if n8n fails
+  let docRecordId: string | null = null
+  try {
+    const { data: insertData } = await adminSupabase.from('processed_documents').insert({
+      user_id: user.id,
+      file_name: fileName,
+      raw_text: text,
+      status: 'processing',
+    }).select('id').single()
+    docRecordId = insertData?.id || null
+  } catch (err) {
+    console.error('Failed to save initial processed_documents record:', err)
+  }
+
   let n8nRes: Response
   try {
     n8nRes = await fetchWithRetry(n8nUrl, {
@@ -31,15 +47,33 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({ text }),
     })
   } catch (err) {
+    const errorMsg = `Webhook failed: ${String(err)}`
     console.error('n8n webhook failed after retries:', err)
-    logEvent({ userId: user.id, event: 'webhook_failure', workflow: 'motion-to-strike', error: String(err), durationMs: Date.now() - startTime, metadata: { textLength: text.length } })
+    logEvent({ userId: user.id, event: 'webhook_failure', workflow: 'motion-to-strike', error: String(err), durationMs: Date.now() - startTime, metadata: { textLength: text.length, fileName } })
+
+    if (docRecordId) {
+      await adminSupabase.from('processed_documents').update({
+        status: 'error',
+        error_message: errorMsg,
+      }).eq('id', docRecordId).then(() => {})
+    }
+
     return NextResponse.json({ error: 'Processing service unavailable. Please try again.' }, { status: 502 })
   }
 
   if (!n8nRes.ok) {
     const errText = await n8nRes.text()
+    const errorMsg = `n8n error ${n8nRes.status}: ${errText.slice(0, 2000)}`
     console.error('n8n returned error:', n8nRes.status, errText)
-    logEvent({ userId: user.id, event: 'process_error', workflow: 'motion-to-strike', error: errText, durationMs: Date.now() - startTime, metadata: { textLength: text.length, httpStatus: n8nRes.status } })
+    logEvent({ userId: user.id, event: 'process_error', workflow: 'motion-to-strike', error: errText, durationMs: Date.now() - startTime, metadata: { textLength: text.length, httpStatus: n8nRes.status, fileName } })
+
+    if (docRecordId) {
+      await adminSupabase.from('processed_documents').update({
+        status: 'error',
+        error_message: errorMsg,
+      }).eq('id', docRecordId).then(() => {})
+    }
+
     return NextResponse.json({ error: `Processing failed: ${errText}` }, { status: 502 })
   }
 
@@ -61,19 +95,17 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Track runs and save to history (non-blocking)
+  // Track runs and update the document record with results
   try {
-    const admin = getSupabaseAdmin()
-
     // Increment runs_count for this user's document agent
-    const { data: org } = await admin
+    const { data: org } = await adminSupabase
       .from('organizations')
       .select('id')
       .eq('user_id', user.id)
       .maybeSingle()
 
     if (org) {
-      const { data: agent } = await admin
+      const { data: agent } = await adminSupabase
         .from('organization_agents')
         .select('id, runs_count')
         .eq('organization_id', org.id)
@@ -81,7 +113,7 @@ export async function POST(request: NextRequest) {
         .maybeSingle()
 
       if (agent) {
-        await admin
+        await adminSupabase
           .from('organization_agents')
           .update({
             runs_count: (agent.runs_count || 0) + 1,
@@ -91,9 +123,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Save to processed_documents history
-    await admin.from('processed_documents').insert({
+    // Update the existing record (or insert if initial save failed)
+    const docData = {
       user_id: user.id,
+      file_name: fileName,
+      raw_text: text,
       plaintiff_name: result.caseMetadata?.plaintiffName,
       defendant_name: result.caseMetadata?.defendantName,
       case_number: result.caseMetadata?.caseNumber,
@@ -103,13 +137,21 @@ export async function POST(request: NextRequest) {
       flagged: result.summary?.flagged,
       results: result.results,
       reply_text: result.reply,
+      n8n_response: result,
       status: result.summary?.flagged > 0 ? 'needs_review' : 'complete',
-    })
+      error_message: null,
+    }
+
+    if (docRecordId) {
+      await adminSupabase.from('processed_documents').update(docData).eq('id', docRecordId)
+    } else {
+      await adminSupabase.from('processed_documents').insert(docData)
+    }
   } catch (err) {
     console.error('Failed to save processed document history:', err)
   }
 
-  logEvent({ userId: user.id, event: 'process_success', workflow: 'motion-to-strike', durationMs: Date.now() - startTime, metadata: { totalDefenses: result.summary?.totalDefenses, matched: result.summary?.matched, flagged: result.summary?.flagged, plaintiff: result.caseMetadata?.plaintiffName, defendant: result.caseMetadata?.defendantName } })
+  logEvent({ userId: user.id, event: 'process_success', workflow: 'motion-to-strike', durationMs: Date.now() - startTime, metadata: { totalDefenses: result.summary?.totalDefenses, matched: result.summary?.matched, flagged: result.summary?.flagged, plaintiff: result.caseMetadata?.plaintiffName, defendant: result.caseMetadata?.defendantName, fileName } })
   return NextResponse.json(result)
 }
 

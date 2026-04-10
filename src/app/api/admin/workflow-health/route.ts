@@ -1,18 +1,9 @@
 import { requireAdmin } from '@/lib/admin/auth'
 import { NextResponse } from 'next/server'
 
-interface WorkflowHealth {
-  workflow: string
-  configured: boolean
-  reachable: boolean | null
-  responseTimeMs: number | null
-  error: string | null
-}
-
 const WORKFLOWS = [
-  { name: 'motion-to-compel', envVar: 'N8N_MOTION_COMPEL_WEBHOOK_URL' },
-  { name: 'compel-documents', envVar: 'N8N_COMPEL_DOCS_WEBHOOK_URL' },
-  { name: 'motion-to-strike', envVar: 'N8N_WEBHOOK_URL' },
+  { slug: 'motion-to-strike', name: 'Motion to Strike', envVar: 'N8N_WEBHOOK_URL' },
+  { slug: 'motion-to-compel', name: 'Motion to Compel', envVar: 'N8N_MOTION_COMPEL_WEBHOOK_URL' },
 ] as const
 
 /**
@@ -26,21 +17,23 @@ export async function GET() {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const results: WorkflowHealth[] = await Promise.all(
-    WORKFLOWS.map(async ({ name, envVar }) => {
+  const results = await Promise.all(
+    WORKFLOWS.map(async ({ slug, name, envVar }) => {
       const url = process.env[envVar]
 
       if (!url) {
         return {
-          workflow: name,
+          slug,
+          name,
+          healthy: false,
           configured: false,
-          reachable: null,
+          reachable: false,
           responseTimeMs: null,
           error: `${envVar} not set`,
         }
       }
 
-      // Ping the webhook with a HEAD request (or GET) to check reachability
+      // Ping the webhook with a GET request to check reachability
       // Use a short timeout to avoid blocking
       const start = Date.now()
       try {
@@ -60,7 +53,9 @@ export async function GET() {
         const reachable = res.status < 500
 
         return {
-          workflow: name,
+          slug,
+          name,
+          healthy: reachable,
           configured: true,
           reachable,
           responseTimeMs,
@@ -68,7 +63,9 @@ export async function GET() {
         }
       } catch (err) {
         return {
-          workflow: name,
+          slug,
+          name,
+          healthy: false,
           configured: true,
           reachable: false,
           responseTimeMs: Date.now() - start,
