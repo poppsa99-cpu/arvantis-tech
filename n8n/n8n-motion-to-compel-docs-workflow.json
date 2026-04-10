@@ -1,0 +1,99 @@
+{
+  "name": "Motion to Compel Docs - Extract Fields",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "motion-to-compel-docs",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "node-webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "motion-to-compel-docs"
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = $input.first().json.body?.text || $input.first().json.text || '';\n\nif (!text) {\n  throw new Error('No text provided in request body');\n}\n\nconst prompt = `You are a legal document parser for Florida insurance defense cases. Extract the following information from this email requesting production of documents, and return it as JSON.\n\nThis is a Motion to Compel Documentation Relied Upon. The lawyer took a deposition where a witness testified that the defendant relied on certain documents for their coverage decision. Now the lawyer wants those documents produced.\n\nDo NOT invent or hallucinate any information. If a field is unclear or missing, return null for that field.\n\nDOCUMENT TEXT:\n${text}\n\nRETURN ONLY VALID JSON — no markdown, no explanation, no code blocks. Just the raw JSON object:\n\n{\n  \"plaintiffNames\": [\"PLAINTIFF FULL NAME IN ALL CAPS\"],\n  \"defendantName\": \"DEFENDANT FULL NAME IN ALL CAPS\",\n  \"caseNumber\": \"case number string\",\n  \"circuitNumber\": \"e.g. 15th\",\n  \"county\": \"COUNTY NAME IN ALL CAPS\",\n  \"deponentName\": \"Full name of person who was deposed\",\n  \"deponentTitle\": \"Their role e.g. Corporate Representative, Desk Adjuster, Field Adjuster, Claims Manager\",\n  \"deponentPronoun\": \"he or she or they\",\n  \"depositionDate\": \"Spelled out date e.g. September 22, 2025\",\n  \"documentRequests\": [\n    {\n      \"whatTestified\": \"What the deponent testified the defendant relied on — e.g. its Field Adjuster's unredacted narrative report in support of its affirmative defenses and coverage decision\",\n      \"whatRequested\": \"What document the plaintiff is requesting — e.g. Defendant's Field Adjuster's unredacted narrative report which was relied upon in support of its affirmative defenses and to determine coverage for this claim\"\n    }\n  ]\n}\n\nEXTRACTION RULES:\n- plaintiffNames: ALL plaintiff names in ALL CAPS. If multiple joined by AND, split into separate array entries.\n- defendantName: Usually an insurance company. ALL CAPS.\n- caseNumber: The civil case number.\n- circuitNumber: The judicial circuit number e.g. 11th, 15th, 17th.\n- county: County name in ALL CAPS.\n- deponentName: The person whose deposition was taken. Could be ANY role — Corporate Representative, Desk Adjuster, Field Adjuster, Claims Reviewer, Supervisor, etc.\n- deponentTitle: Their exact title/role as described in the email.\n- deponentPronoun: he/she/they based on context.\n- depositionDate: When the deposition took place. Spelled out fully.\n- documentRequests: One entry per SEPARATE document type being requested. Each email may request multiple different documents from the same deposition testimony.\n  - whatTestified: The testimony about what the defendant relied on (for paragraph 3 of the motion)\n  - whatRequested: The specific document being requested (for paragraph 4 of the motion)\n- Dates must be spelled out: September 22, 2025 — NOT 09/22/2025.\n- Keep the phrasing close to what the lawyer wrote — do not rephrase or summarize.`;\n\nreturn [{\n  json: {\n    model: 'claude-haiku-4-5-20251001',\n    max_tokens: 2048,\n    messages: [\n      {\n        role: 'user',\n        content: prompt\n      }\n    ]\n  }\n}];"
+      },
+      "id": "node-build-prompt",
+      "name": "Build Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "node-claude",
+      "name": "Call Claude API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst content = response.content?.[0]?.text || '';\n\nif (!content) {\n  throw new Error('Empty response from Claude API');\n}\n\nlet parsed;\ntry {\n  const clean = content\n    .replace(/^```json\\s*/i, '')\n    .replace(/^```\\s*/i, '')\n    .replace(/\\s*```$/i, '')\n    .trim();\n  parsed = JSON.parse(clean);\n} catch (e) {\n  throw new Error('Failed to parse AI response as JSON. Raw response: ' + content.substring(0, 300));\n}\n\nif (!parsed.plaintiffNames || !Array.isArray(parsed.plaintiffNames) || parsed.plaintiffNames.length === 0) {\n  throw new Error('No plaintiff names found in document');\n}\nif (!parsed.documentRequests || !Array.isArray(parsed.documentRequests) || parsed.documentRequests.length === 0) {\n  throw new Error('No document requests found in document');\n}\n\nparsed.deponentPronoun = ['he', 'she', 'they'].includes(parsed.deponentPronoun) ? parsed.deponentPronoun : 'they';\n\nreturn [{ json: parsed }];"
+      },
+      "id": "node-parse",
+      "name": "Parse & Validate JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "node-respond",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1120, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Build Prompt", "type": "main", "index": 0 }]]
+    },
+    "Build Prompt": {
+      "main": [[{ "node": "Call Claude API", "type": "main", "index": 0 }]]
+    },
+    "Call Claude API": {
+      "main": [[{ "node": "Parse & Validate JSON", "type": "main", "index": 0 }]]
+    },
+    "Parse & Validate JSON": {
+      "main": [[{ "node": "Respond to Webhook", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveExecutionProgress": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  }
+}

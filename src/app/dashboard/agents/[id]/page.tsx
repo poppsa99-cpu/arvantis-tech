@@ -123,190 +123,7 @@ interface CompelDocumentsData {
   deponentTitle: string
   deponentPronoun: 'he' | 'she' | 'they'
   depositionDate: string
-  documentRequests: DocumentRequest[]
-}
-
-function CompelDocumentsResults({
-  data: initialData,
-  onBack,
-  onDownload,
-}: {
-  data: CompelDocumentsData
-  onBack: () => void
-  onDownload: (data: CompelDocumentsData, i: number, originalData?: CompelDocumentsData) => void
-}) {
-  const [data, setData] = useState<CompelDocumentsData>(initialData)
-  const [expandedIdx, setExpandedIdx] = useState<number | null>(null)
-
-  function updateRequest(idx: number, field: keyof DocumentRequest, value: string) {
-    setData(prev => {
-      const newReqs = [...prev.documentRequests]
-      newReqs[idx] = { ...newReqs[idx], [field]: value }
-      return { ...prev, documentRequests: newReqs }
-    })
-  }
-
-  function updateCaseField<K extends keyof CompelDocumentsData>(field: K, value: CompelDocumentsData[K]) {
-    setData(prev => ({ ...prev, [field]: value }))
-  }
-
-  function honorific(pronoun: 'he' | 'she' | 'they') {
-    if (pronoun === 'he') return 'Mr.'
-    if (pronoun === 'she') return 'Ms.'
-    return ''
-  }
-
-  return (
-    <BlurFade delay={0.05} duration={0.3}>
-      <div className="space-y-6">
-        <button
-          onClick={onBack}
-          className="flex items-center gap-1.5 text-sm font-medium text-[var(--muted-dim)] hover:text-[var(--foreground)] transition-colors group"
-        >
-          <svg className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg>
-          Back to uploads
-        </button>
-
-        {/* Editable Case Summary */}
-        <div className="relative overflow-hidden rounded-2xl border border-[var(--card-border)] bg-gradient-to-br from-[var(--card)] to-[var(--background)] shadow-lg dark:shadow-2xl">
-          <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-violet-500 to-violet-600" />
-          <div className="p-6 pl-7">
-            <h3 className="text-xl font-bold text-[var(--foreground)] mb-4">Case Summary</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {[
-                { label: 'Plaintiff', value: data.plaintiffNames.join(' and '), onChange: (v: string) => updateCaseField('plaintiffNames', v.split(/\s+and\s+/i)) },
-                { label: 'Defendant', value: data.defendantName, onChange: (v: string) => updateCaseField('defendantName', v) },
-                { label: 'Case No.', value: data.caseNumber, onChange: (v: string) => updateCaseField('caseNumber', v) },
-                { label: 'Circuit', value: data.circuitNumber, onChange: (v: string) => updateCaseField('circuitNumber', v) },
-                { label: 'County', value: data.county, onChange: (v: string) => updateCaseField('county', v) },
-                { label: 'Deponent', value: data.deponentName, onChange: (v: string) => updateCaseField('deponentName', v) },
-                { label: 'Deponent Title', value: data.deponentTitle, onChange: (v: string) => updateCaseField('deponentTitle', v) },
-                { label: 'Deposition Date', value: data.depositionDate, onChange: (v: string) => updateCaseField('depositionDate', v) },
-              ].map(({ label, value, onChange }) => (
-                <div key={label} className="space-y-1">
-                  <span className="text-[11px] uppercase tracking-[0.15em] text-violet-600 dark:text-violet-400 font-bold">{label}</span>
-                  <input
-                    type="text"
-                    value={value || ''}
-                    onChange={(e) => onChange(e.target.value)}
-                    className="w-full text-sm font-semibold text-[var(--foreground)] bg-transparent border-b border-transparent hover:border-[var(--card-border)] focus:border-violet-500 focus:outline-none py-0.5 transition-colors"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Expandable Document Request Cards */}
-        <div>
-          <h2 className="text-xl font-bold text-[var(--foreground)] mb-3">
-            {data.documentRequests.length} Motion{data.documentRequests.length !== 1 ? 's' : ''} Ready
-          </h2>
-          <div className="space-y-3">
-            {data.documentRequests.map((docReq, i) => {
-              const isExpanded = expandedIdx === i
-              const mr = honorific(data.deponentPronoun)
-              const deponentShort = mr ? `${mr} ${data.deponentName.split(' ').slice(-1)[0]}` : data.deponentName
-
-              return (
-                <BlurFade key={i} delay={i * 0.04} duration={0.2}>
-                  <div className={`relative overflow-hidden rounded-2xl border transition-all duration-300 ${
-                    isExpanded
-                      ? 'border-violet-500/40 bg-[var(--card)] shadow-lg shadow-violet-500/5'
-                      : 'border-[var(--card-border)] bg-gradient-to-r from-violet-50/40 via-[var(--card)] to-[var(--card)] dark:from-violet-900/5 dark:via-[var(--card)] dark:to-[var(--card)] shadow-md'
-                  }`}>
-                    <div className={`absolute top-0 left-0 w-1 h-full transition-colors ${isExpanded ? 'bg-violet-400' : 'bg-violet-500'}`} />
-
-                    <button
-                      onClick={() => setExpandedIdx(isExpanded ? null : i)}
-                      className="w-full text-left p-5 pl-6 flex items-center justify-between gap-4"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <p className="text-base font-bold text-[var(--foreground)]">Document Request #{i + 1}</p>
-                        {!isExpanded && (
-                          <p className="text-sm text-[var(--muted-dim)] mt-1 leading-snug line-clamp-1">{docReq.whatRequested}</p>
-                        )}
-                      </div>
-                      <svg className={`h-5 w-5 text-[var(--muted-dim)] transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-                      </svg>
-                    </button>
-
-                    {isExpanded && (
-                      <div className="px-6 pb-6 pt-0 space-y-5 border-t border-[var(--card-border)]">
-                        <div className="grid grid-cols-1 gap-4 pt-4">
-                          <div className="space-y-1">
-                            <label className="text-[10px] uppercase tracking-[0.15em] text-[var(--muted-dim)] font-bold">What Deponent Testified Defendant Relied On (Para 3)</label>
-                            <textarea
-                              value={docReq.whatTestified}
-                              onChange={(e) => updateRequest(i, 'whatTestified', e.target.value)}
-                              rows={3}
-                              className="w-full text-sm text-[var(--foreground)] bg-[var(--background)] border border-[var(--card-border)] rounded-lg px-3 py-2 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500/20 transition-colors resize-none"
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-[10px] uppercase tracking-[0.15em] text-[var(--muted-dim)] font-bold">What Documents Plaintiff Is Requesting (Para 4)</label>
-                            <textarea
-                              value={docReq.whatRequested}
-                              onChange={(e) => updateRequest(i, 'whatRequested', e.target.value)}
-                              rows={3}
-                              className="w-full text-sm text-[var(--foreground)] bg-[var(--background)] border border-[var(--card-border)] rounded-lg px-3 py-2 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500/20 transition-colors resize-none"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Document preview */}
-                        <div className="rounded-xl border border-[var(--card-border)] bg-white dark:bg-gray-950 overflow-hidden">
-                          <div className="px-4 py-2.5 bg-gray-50 dark:bg-gray-900 border-b border-[var(--card-border)] flex items-center gap-2">
-                            <svg className="h-3.5 w-3.5 text-[var(--muted-dim)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-                            </svg>
-                            <span className="text-[11px] font-semibold text-[var(--muted-dim)] uppercase tracking-wider">Document Preview</span>
-                          </div>
-                          <div className="p-6 text-gray-800 dark:text-gray-200 space-y-4" style={{ fontFamily: '"Times New Roman", Times, serif', fontSize: '13px', lineHeight: '1.8' }}>
-                            <p className="text-center font-bold underline text-sm">
-                              PLAINTIFF&apos;S MOTION TO COMPEL DOCUMENTATION RELIED UPON
-                            </p>
-                            <p style={{ textIndent: '2em' }}>
-                              1. This case arises from a breach of contract action resulting from Defendant&apos;s failure to pay for the property damages to the Plaintiff.
-                            </p>
-                            <p style={{ textIndent: '2em' }}>
-                              2. On or about {data.depositionDate || '[DATE]'}, {data.plaintiffNames.length > 1 ? 'Plaintiffs' : 'Plaintiff'} took the deposition of Defendant&apos;s {data.deponentTitle || '[TITLE]'}, {data.deponentName || '[NAME]'}.
-                            </p>
-                            <p style={{ textIndent: '2em' }}>
-                              3. During the deposition, {docReq.whatTestified || '[TESTIMONY]'}
-                            </p>
-                            <p style={{ textIndent: '2em' }}>
-                              4. {data.plaintiffNames.length > 1 ? 'Plaintiffs' : 'Plaintiff'} request{data.plaintiffNames.length > 1 ? '' : 's'} {docReq.whatRequested || '[DOCUMENTS REQUESTED]'}
-                            </p>
-                            <p className="text-center font-bold text-sm pt-2">MEMORANDUM OF LAW</p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 italic text-center">(Discovery scope + sword &amp; shield doctrine — 2 pages of case law)</p>
-                            <p style={{ textIndent: '2em' }}>
-                              <span className="font-bold">WHEREFORE</span>, the {data.plaintiffNames.length > 1 ? 'Plaintiffs' : 'Plaintiff'}, {data.plaintiffNames.join(' AND ')}, respectfully moves this Honorable Court for the entry of an Order granting Plaintiff&apos;s Motion to Compel Documentation relied upon by the Defendant.
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="flex justify-end">
-                          <button
-                            onClick={() => onDownload(data, i, initialData)}
-                            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold transition-colors shadow-md shadow-violet-500/20"
-                          >
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
-                            Download This Motion
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </BlurFade>
-              )
-            })}
-          </div>
-        </div>
-      </div>
-    </BlurFade>
-  )
+  documentRequests: { whatTestified: string; whatRequested: string }[]
 }
 
 function MotionToCompelResults({
@@ -576,6 +393,7 @@ export default function AgentWorkspacePage() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [categories, setCategories] = useState<Array<{id: string, name: string}>>([])
   const [reassigning, setReassigning] = useState<Record<number, boolean>>({})
+  const [originalDefenses, setOriginalDefenses] = useState<Record<number, DefenseResult>>({})
   const [motionDocs, setMotionDocs] = useState<MotionToCompelEntry[]>([])
   const [selectedMotionId, setSelectedMotionId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -649,6 +467,8 @@ export default function AgentWorkspacePage() {
   }, [])
 
   async function handleReassignCategory(docId: string, defenseIndex: number, categoryId: string, categoryName: string, def: DefenseResult) {
+    // Save original state for undo
+    setOriginalDefenses(prev => ({ ...prev, [def.defenseNumber]: { ...def } }))
     setReassigning(prev => ({ ...prev, [def.defenseNumber]: true }))
     try {
       const res = await fetch('/api/agents/reassign', {
@@ -1002,6 +822,51 @@ export default function AgentWorkspacePage() {
       const next = new Set(prev)
       if (next.has(defenseNumber)) next.delete(defenseNumber)
       else next.add(defenseNumber)
+      return next
+    })
+  }
+
+  function handleUndoReassign(docId: string, defenseIndex: number, defenseNumber: number) {
+    const original = originalDefenses[defenseNumber]
+    if (!original) return
+    setDocs(prev => prev.map(d => {
+      if (d.id !== docId || !d.result) return d
+      const newResults = [...d.result.results]
+      newResults[defenseIndex] = { ...original }
+      const flaggedCount = newResults.filter(r => r.flagged).length
+      const matchedCount = newResults.filter(r => r.matched).length
+      const meta = d.result.caseMetadata
+      const plaintiff = meta?.plaintiffName || 'Plaintiff'
+      const defendant = meta?.defendantName || 'Defendant'
+      let replyLines: string[] = []
+      replyLines.push(`${meta?.court || 'IN THE CIRCUIT COURT'}\n`)
+      replyLines.push(`${plaintiff}, Plaintiff,\nvs.\n${defendant}, Defendant.\n`)
+      replyLines.push(`Case No.: ${meta?.caseNumber || ''}\n`)
+      replyLines.push(`PLAINTIFF'S REPLY/AVOIDANCE OF DEFENDANT'S ANSWER AND AFFIRMATIVE DEFENSES AND MOTION TO STRIKE DEFENDANT'S AFFIRMATIVE DEFENSES\n`)
+      replyLines.push(`Plaintiff, ${plaintiff}, by and through her undersigned attorneys, and pursuant to Florida Rule of Civil Procedure 1.100, hereby files this Reply/Avoidance of Defendant's Answer and Affirmative Defenses and Motion to Strike Defendant's Affirmative Defenses as follows:\n`)
+      let paraNum = 1
+      for (const r of newResults) {
+        if (r.responseText) {
+          replyLines.push(`${paraNum}.\tAs to Defendant's ${r.ordinal} Affirmative Defense (${r.matchedCategory || r.suggestedCategory}):`)
+          replyLines.push(`${r.responseText}\n`)
+          paraNum++
+        }
+      }
+      replyLines.push(`${paraNum}.\tTo the extent required Plaintiff denies all Defendant's Affirmative Defenses.\n`)
+      replyLines.push(`WHEREFORE, Plaintiff respectfully requests this Court accept Plaintiff's denial and avoidance and Motion to Strike of Defendant's Affirmative Defenses.`)
+      return {
+        ...d,
+        result: {
+          ...d.result,
+          results: newResults,
+          reply: replyLines.join('\n'),
+          summary: { ...d.result.summary, matched: matchedCount, flagged: flaggedCount }
+        }
+      }
+    }))
+    setOriginalDefenses(prev => {
+      const next = { ...prev }
+      delete next[defenseNumber]
       return next
     })
   }
@@ -1503,52 +1368,6 @@ export default function AgentWorkspacePage() {
                     </div>
                   )}
 
-                  {/* Compel Documents upload list */}
-                  {selectedDocType === 'compel-documents' && compelDocsDocs.length > 0 && (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h2 className="text-sm font-semibold text-[var(--foreground)]">Documents</h2>
-                        <button onClick={handleClearAll} className="text-sm font-medium text-[var(--muted-dim)] hover:text-[var(--foreground)] transition-colors">Clear all</button>
-                      </div>
-                      <div className="space-y-2">
-                        {compelDocsDocs.map((doc, i) => (
-                          <BlurFade key={doc.id} delay={i * 0.05} duration={0.25}>
-                            <Card className={`ring-0 shadow-sm transition-all duration-200 hover:shadow-md ${doc.status === 'error' ? 'border border-red-500/20 shadow-red-500/5' : 'border border-[var(--card-border)]'}`}>
-                              <CardContent className="py-3 px-4">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-3 min-w-0">
-                                    <div className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 ${doc.status === 'done' ? 'bg-green-500/10 text-green-500' : doc.status === 'error' ? 'bg-red-500/10 text-red-500' : 'bg-violet-500/10 text-violet-500'}`}>
-                                      {(doc.status === 'extracting' || doc.status === 'processing') && (
-                                        <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" /></svg>
-                                      )}
-                                      {doc.status === 'done' && (<svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>)}
-                                      {doc.status === 'error' && (<svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>)}
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                      <p className="text-sm font-semibold truncate">{doc.fileName}</p>
-                                      <p className="text-xs text-[var(--muted-dim)] mt-0.5">
-                                        {doc.status === 'done' && doc.result ? (
-                                          <span className="text-green-600 dark:text-green-400">{doc.result.documentRequests.length} document{doc.result.documentRequests.length !== 1 ? 's' : ''} to compel</span>
-                                        ) : doc.status === 'error' ? (
-                                          <span className="text-red-500">{doc.error}</span>
-                                        ) : doc.status === 'processing' ? 'Analyzing email...' : statusLabel(doc.status)}
-                                      </p>
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center gap-2 shrink-0 ml-4">
-                                    {doc.status === 'done' && (
-                                      <Button variant="outline" size="sm" onClick={() => { setSelectedCompelDocsId(doc.id); switchView('results') }} className="text-xs">View Motions</Button>
-                                    )}
-                                  </div>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          </BlurFade>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
                   {/* File List */}
                   {selectedDocType === 'motion-to-strike' && docs.length > 0 && (
                     <div className="space-y-3">
@@ -1703,15 +1522,6 @@ export default function AgentWorkspacePage() {
                   )}
                 </div>
               </BlurFade>
-            )}
-
-            {/* Compel Documents Results View */}
-            {activeView === 'results' && selectedDocType === 'compel-documents' && compelDocsDocs.find(d => d.id === selectedCompelDocsId)?.result && (
-              <CompelDocumentsResults
-                data={compelDocsDocs.find(d => d.id === selectedCompelDocsId)!.result!}
-                onBack={() => switchView('upload')}
-                onDownload={handleDownloadCompelDocs}
-              />
             )}
 
             {/* Motion to Compel Results View */}
@@ -1884,6 +1694,27 @@ export default function AgentWorkspacePage() {
                                   {reassigning[def.defenseNumber] && (
                                     <div className="animate-spin h-4 w-4 border-2 border-amber-500 border-t-transparent rounded-full" />
                                   )}
+                                </div>
+                              </div>
+                            )}
+                            {!def.flagged && originalDefenses[def.defenseNumber] && (
+                              <div className="mt-3 pt-3 border-t border-green-200 dark:border-green-700/30">
+                                <div className="flex items-center justify-between">
+                                  <p className="text-sm text-green-700 dark:text-green-400 font-semibold flex items-center gap-1.5">
+                                    <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    Reassigned to: {def.matchedCategory}
+                                  </p>
+                                  <button
+                                    onClick={() => selectedDoc && handleUndoReassign(selectedDoc.id, i, def.defenseNumber)}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-[var(--card-border)] bg-[var(--card)] hover:bg-red-50 dark:hover:bg-red-900/20 text-[var(--foreground-60)] hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                                  >
+                                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+                                    </svg>
+                                    Undo
+                                  </button>
                                 </div>
                               </div>
                             )}

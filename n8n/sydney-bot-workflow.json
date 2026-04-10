@@ -1,0 +1,126 @@
+{
+  "name": "Sydney Bot — Process Defendant Answer",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "process-answer",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": true
+        }
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "sydney-bot-process"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL || 'https://zwjubigulpfdhtrrdina.supabase.co' }}/rest/v1/default_defenses?select=id,category_id,keywords,defense_text,is_duplicative_response,categories(name)",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "fetch-defenses",
+      "name": "Fetch DB Defenses",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// ============================================================\n// Sydney Bot — Core Processing Pipeline (n8n Code Node)\n// ============================================================\n\n// --- Input ---\nconst webhookData = $('Webhook').first().json;\nconst answerText = webhookData.body?.text || webhookData.body?.answerText || '';\nif (!answerText) {\n  return [{ json: { error: 'No text provided. Send JSON with { \"text\": \"...\" }' } }];\n}\n\nconst dbDefenses = $('Fetch DB Defenses').first().json;\n// n8n HTTP Request returns array at top level or nested\nconst defenseList = Array.isArray(dbDefenses) ? dbDefenses : (dbDefenses.data || []);\n\n// --- Ordinal helpers ---\nconst ORDINALS = [\n  'First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth', 'Seventh', 'Eighth',\n  'Ninth', 'Tenth', 'Eleventh', 'Twelfth', 'Thirteenth', 'Fourteenth', 'Fifteenth',\n  'Sixteenth', 'Seventeenth', 'Eighteenth', 'Nineteenth', 'Twentieth',\n  'Twenty-First', 'Twenty-Second', 'Twenty-Third', 'Twenty-Fourth', 'Twenty-Fifth',\n  'Twenty-Sixth', 'Twenty-Seventh', 'Twenty-Eighth', 'Twenty-Ninth', 'Thirtieth',\n  'Thirty-First', 'Thirty-Second', 'Thirty-Third', 'Thirty-Fourth', 'Thirty-Fifth',\n  'Thirty-Sixth', 'Thirty-Seventh', 'Thirty-Eighth', 'Thirty-Ninth', 'Fortieth',\n  'Forty-First', 'Forty-Second', 'Forty-Third', 'Forty-Fourth', 'Forty-Fifth',\n  'Forty-Sixth', 'Forty-Seventh', 'Forty-Eighth', 'Forty-Ninth', 'Fiftieth',\n];\n\nfunction ordinalToNumber(ordinal) {\n  const idx = ORDINALS.findIndex(o => o.toLowerCase() === ordinal.toLowerCase());\n  return idx >= 0 ? idx + 1 : null;\n}\n\nfunction numberToOrdinal(num) {\n  return ORDINALS[num - 1] || `${num}th`;\n}\n\n// --- Step 1: Parse case metadata ---\nfunction parseCaseMetadata(text) {\n  text = text.replace(/[\\u2018\\u2019\\u201A\\u201B]/g, \"'\").replace(/[\\u201C\\u201D\\u201E\\u201F]/g, '\"');\n\n  let plaintiffName = null;\n  const plaintiffPatterns = [\n    /\\n([A-Z][A-Z\\s.,&'\"\\-()]+?)\\s*,?\\s*\\n\\s*Plaintiff/,\n    /FLORIDA\\s*\\n+([\\s\\S]*?)\\s*,?\\s*\\n\\s*Plaintiff/i,\n  ];\n  for (const pat of plaintiffPatterns) {\n    const m = text.match(pat);\n    if (m) {\n      plaintiffName = m[1].trim().replace(/\\s+/g, ' ').replace(/\\s*,\\s*$/, '');\n      plaintiffName = plaintiffName\n        .replace(/^.*?FLORIDA\\s*/i, '')\n        .replace(/^(?:COUNTY\\s+CIVIL\\s+DIVISION|CIVIL\\s+DIVISION)\\s*/i, '')\n        .trim();\n      if (plaintiffName.length > 3) break;\n    }\n  }\n\n  let defendantName = null;\n  const defendantPatterns = [\n    /[Vv][Ss]?\\.\\s*(?:CASE[^\\n]*\\n)?\\s*\\n*([\\s\\S]*?)\\s*,?\\s*\\n\\s*Defendant/i,\n    /\\nvs?\\.\\s*\\n([\\s\\S]*?)\\s*,?\\s*\\n\\s*Defendant/i,\n  ];\n  for (const pat of defendantPatterns) {\n    const m = text.match(pat);\n    if (m) {\n      defendantName = m[1].trim().replace(/\\s+/g, ' ').replace(/\\s*,\\s*$/, '');\n      if (defendantName.length > 3) break;\n    }\n  }\n\n  let caseNumber = null;\n  const caseMatch = text.match(/CASE\\s*NO\\.?\\s*:?\\s*(\\d{4}[A-Z]{2}\\d+)/i);\n  if (caseMatch) caseNumber = caseMatch[1];\n\n  let court = null;\n  const courtMatch = text.match(/IN\\s+(?:THE\\s+)?(?:CIRCUIT|COUNTY)\\s+COURT\\s+OF\\s+THE[\\s\\S]*?COUNTY,?\\s*\\n?\\s*FLORIDA/i);\n  if (courtMatch) court = courtMatch[0].replace(/\\s+/g, ' ').trim();\n\n  return { plaintiffName, defendantName, caseNumber, court };\n}\n\n// --- Step 2: Split affirmative defenses ---\nfunction splitAffirmativeDefenses(text) {\n  text = text.replace(/[\\u2018\\u2019\\u201A\\u201B]/g, \"'\").replace(/[\\u201C\\u201D\\u201E\\u201F]/g, '\"');\n\n  const affDefStart = text.search(/AFFIRMATIVE\\s+DEFENSES/i);\n  if (affDefStart === -1) return [];\n  const affText = text.substring(affDefStart);\n\n  const defensePattern = /(?:^|\\n)\\s*(?:(\\w+(?:-\\w+)?)\\s+AFFIRMATIVE\\s+DEFENSE|(\\d+)\\.\\s+(?:AFFIRMATIVE\\s+DEFENSE|As\\s+(?:a\\s+)?(?:its?\\s+)?(?:\\w+(?:-\\w+)?)\\s+[Aa]ffirmative\\s+[Dd]efense))/gi;\n\n  const positions = [];\n  let match;\n  while ((match = defensePattern.exec(affText)) !== null) {\n    const ordinalWord = match[1];\n    const numberStr = match[2];\n    if (ordinalWord && !ordinalToNumber(ordinalWord)) continue;\n\n    let defenseNumber;\n    if (ordinalWord) {\n      defenseNumber = ordinalToNumber(ordinalWord);\n    } else {\n      defenseNumber = parseInt(numberStr, 10);\n    }\n\n    const actualIndex = match.index + (match[0].length - match[0].trimStart().length);\n    positions.push({ index: actualIndex, defenseNumber, matchText: match[0].trim() });\n  }\n\n  const seenNumbers = new Set();\n  const uniquePositions = positions.filter(p => {\n    if (seenNumbers.has(p.defenseNumber)) return false;\n    seenNumbers.add(p.defenseNumber);\n    return true;\n  });\n\n  const defenses = [];\n  for (let i = 0; i < uniquePositions.length; i++) {\n    const start = uniquePositions[i].index;\n    const end = i + 1 < uniquePositions.length ? uniquePositions[i + 1].index : affText.length;\n    defenses.push({\n      defenseNumber: uniquePositions[i].defenseNumber,\n      ordinal: numberToOrdinal(uniquePositions[i].defenseNumber),\n      rawText: affText.substring(start, end).trim(),\n    });\n  }\n  return defenses;\n}\n\n// --- Step 3: Classify defense ---\nfunction classifyDefense(defenseText) {\n  const text = defenseText.toLowerCase();\n\n  const citesSpecificProvisions = (\n    /deductible/i.test(text) ||\n    /limits of liability/i.test(text) ||\n    /mortgagee/i.test(text) ||\n    /payment method/i.test(text) ||\n    /certain provisions/i.test(text)\n  );\n  const isGenericPolicyDefense = (\n    /all terms,?\\s*conditions/i.test(text) ||\n    /entire policy/i.test(text) ||\n    /all conditions of the policy/i.test(text)\n  );\n\n  const isQuotingPolicyExclusions = (\n    /section i/i.test(text) &&\n    (/losses not insured/i.test(text) || /losses insured/i.test(text)) &&\n    /we will not pay/i.test(text)\n  );\n  const mentionsWearAndTear = /wear.{0,5}tear/i.test(text) || /deterioration/i.test(text);\n  const isDefendantArguingWearTear = mentionsWearAndTear && (\n    /observed evidence of wear/i.test(text) ||\n    /as a result of.*(?:wear|deterioration|mechanical)/i.test(text) ||\n    /consistent with.*(?:wear|deterioration)/i.test(text) ||\n    /damage.*caused by.*(?:wear|tear|deterioration)/i.test(text)\n  );\n\n  const categorySignals = [\n    { category: 'failure to state cause of action', patterns: ['failure to state', 'cause of action', 'fails to state'] },\n    { category: 'Duties after Loss', patterns: ['duties after loss', 'post-loss duties', 'post loss duties', 'duty after loss', 'failed to comply with', 'conditions precedent', 'failed to notify', 'failed to give', 'sworn proof of loss', 'material breaches of the policy'] },\n    { category: 'wear and tear', patterns: ['wear and tear', 'deterioration', 'gradual deterioration'] },\n    { category: 'preexisting damages', patterns: ['pre-existing', 'preexisting', 'prior damage', 'existing damage', 'pre existing'] },\n    { category: 'SET OFF', patterns: ['set off', 'setoff', 'set-off', 'offset'] },\n    { category: 'fraud and misrepresentation', patterns: ['fraud', 'misrepresentation', 'material misrepresentation', 'fraudulent'] },\n    { category: 'fraud and concealment', patterns: ['concealment', 'conceal'] },\n    { category: 'No Standing', patterns: ['standing', 'lack of standing', 'no standing'] },\n    { category: 'No further Coverage', patterns: ['no further coverage', 'no coverage', 'coverage does not extend'] },\n    { category: 'Loss Settlement provision', patterns: ['loss settlement', 'replacement cost', 'actual cash value settlement'] },\n    { category: 'failure to protect', patterns: ['failure to protect', 'failed to protect', 'protect the property', 'mitigate'] },\n    { category: 'ACV only', patterns: ['actual cash value', 'acv', 'acv only', 'limited to the actual cash value'] },\n    { category: 'entire policy', patterns: ['entire policy', 'all conditions of the policy', 'all terms, conditions, exclusions'] },\n    { category: 'matching costs', patterns: ['matching', 'match in quality', 'match in color', 'undamaged property'] },\n    { category: 'ordinance and law', patterns: ['ordinance', 'building code', 'ordinance or law', 'code upgrade'] },\n    { category: 'rain', patterns: ['rain', 'rainfall', 'rainwater'] },\n    { category: 'Building, shrinking settling', patterns: ['settling', 'shrinking', 'bulging', 'cracking', 'expansion'] },\n    { category: 'roof surfacing schedule', patterns: ['roof surfacing', 'roof schedule', 'roof payment schedule'] },\n    { category: 'late reporting', patterns: ['late report', 'late notice', 'untimely notice', 'timely report'] },\n    { category: 'post-loss duties', patterns: ['post-loss', 'post loss', 'sworn statement', 'examination under oath'] },\n    { category: 'Notice of Intent to Litigate', patterns: ['notice of intent', 'intent to litigate', 'civil remedy'] },\n    { category: 'suit against us', patterns: ['suit against us', 'legal action against', 'limitations period'] },\n    { category: 'Exterior Paint', patterns: ['exterior paint', 'paint', 'cosmetic'] },\n    { category: 'excessive pricing', patterns: ['excessive', 'inflated', 'unreasonable pricing', 'excessive pricing'] },\n    { category: 'Endorsement HO 06 41', patterns: ['endorsement', 'ho 06 41', 'ho-06-41'] },\n    { category: 'no peril created opening', patterns: ['opening', 'peril created opening', 'no opening'] },\n    { category: 'failure to provide documents', patterns: ['failure to provide', 'documents', 'records'] },\n    { category: 'full payment of actual cash value', patterns: ['full payment', 'paid in full', 'full acv'] },\n    { category: 'No notice of Disputed Actual Cash Value', patterns: ['disputed actual cash', 'notice of disputed'] },\n    { category: 'Enclosure and other Property excluded by Hurricane loss', patterns: ['enclosure', 'hurricane', 'screen enclosure'] },\n    { category: 'no covered ensuing losses', patterns: ['ensuing loss', 'ensuing damage', 'no covered'] },\n    { category: 'duplicative', patterns: ['duplicative', 'same as first', 'same as 1st', 'previously stated', 'realleges and incorporates', 're-alleges and incorporates all prior'] },\n    { category: 'loss settlement- 1% matching', patterns: ['1%', 'one percent', 'matching limit', '1 percent'] },\n    { category: 'DEFAULT', patterns: [] },\n  ];\n\n  const scores = [];\n  for (const signal of categorySignals) {\n    let score = 0;\n    for (const pattern of signal.patterns) {\n      if (text.includes(pattern)) score++;\n    }\n    if (score > 0) scores.push({ category: signal.category, score });\n  }\n  scores.sort((a, b) => b.score - a.score);\n\n  let result = scores.length > 0\n    ? { category: scores[0].category, confidence: scores[0].score / Math.max(scores[0].score, 2), allMatches: scores }\n    : { category: 'UNMATCHED', confidence: 0, allMatches: [] };\n\n  if (result.category === 'wear and tear' && isQuotingPolicyExclusions && !isDefendantArguingWearTear) {\n    result.category = 'DEFAULT';\n    result.confidence = 0.8;\n  }\n  if (citesSpecificProvisions && !isGenericPolicyDefense) {\n    result.category = 'No further Coverage';\n    result.confidence = 0.9;\n  }\n  if (result.category === 'entire policy' && citesSpecificProvisions) {\n    result.category = 'No further Coverage';\n    result.confidence = 0.9;\n  }\n\n  return result;\n}\n\n// --- Step 4: Match to database ---\nfunction matchToDatabase(classification, dbDefs) {\n  const catName = classification.category.toLowerCase();\n  const matches = dbDefs.filter(d => {\n    const dbCatName = (d.categories?.name || '').toLowerCase();\n    if (dbCatName === catName) return true;\n    if (dbCatName.includes(catName) || catName.includes(dbCatName)) return true;\n    if (d.keywords && d.keywords.length > 0) {\n      const catWords = catName.split(/[\\s,/&-]+/).filter(w => w.length > 2);\n      const overlap = d.keywords.filter(kw => catWords.includes(kw.toLowerCase()));\n      if (overlap.length >= 2) return true;\n    }\n    return false;\n  });\n  if (matches.length > 0) {\n    return { matched: true, defense: matches[0], confidence: classification.confidence };\n  }\n  return { matched: false, defense: null, confidence: 0 };\n}\n\n// --- Step 5: Personalize defense text ---\nfunction personalizeDefenseText(defText, defenseNumber, meta) {\n  let result = defText;\n  const ordinalPattern = /As to Defendant[\\u2019']s\\s+(\\w+(?:-\\w+)?)\\s+Affirmative\\s+Defense/gi;\n  const newOrdinal = numberToOrdinal(defenseNumber);\n  result = result.replace(ordinalPattern, `As to Defendant's ${newOrdinal} Affirmative Defense`);\n\n  const altPattern = /As to (\\w+(?:-\\w+)?)\\s+Affirmative\\s+Defense/i;\n  if (!result.match(/As to Defendant/i)) {\n    result = result.replace(altPattern, `As to Defendant's ${newOrdinal} Affirmative Defense`);\n  }\n\n  if (meta.coverageLetterDate) {\n    result = result.replace(\n      /Coverage letter dated\\s+\\w+\\s+\\d{1,2},\\s*\\d{4}/gi,\n      `Coverage letter dated ${meta.coverageLetterDate}`\n    );\n  }\n  return result;\n}\n\n// --- Step 6: Assemble reply ---\nfunction assembleReply(meta, matchedDefenses) {\n  const parts = [];\n  parts.push(meta.court || 'IN THE CIRCUIT COURT OF THE _____ JUDICIAL CIRCUIT');\n  parts.push('');\n  parts.push(meta.plaintiffName || '[PLAINTIFF NAME]');\n  parts.push(`\\t\\t\\t\\t\\tCASE NO.: ${meta.caseNumber || '[CASE NUMBER]'}`);\n  parts.push('\\tPlaintiffs,');\n  parts.push('v.');\n  parts.push(meta.defendantName || '[DEFENDANT NAME]');\n  parts.push('\\tDefendant.');\n  parts.push('______________________________________/');\n  parts.push('');\n  parts.push(\"PLAINTIFFS' MOTION TO STRIKE AND REPLY/AVOIDANCE TO DEFENDANT'S AFFIRMATIVE DEFENSES\");\n  parts.push('');\n  const plaintiffRef = meta.plaintiffName || '[PLAINTIFF NAME]';\n  parts.push(\n    `Plaintiffs, ${plaintiffRef}, by and through undersigned attorneys, and pursuant to ` +\n    `Florida Rule of Civil Procedure 1.100, hereby files this Reply/Avoidance of Defendant's ` +\n    `Answer and Affirmative Defenses and Motion to Strike Defendant's Affirmative Defenses as follows:`\n  );\n  parts.push('');\n  parts.push(\n    `As memorialized in B & S Associates, Inc. v. Indem. Cas. & Prop., Ltd., 641 So. 2d 436, 437 ` +\n    `(Fla. 4th DCA 1994)`\n  );\n  parts.push('');\n  parts.push(\n    `[I]t would appear that all risk insurance arose for the very purpose of protecting the insured ` +\n    `in those cases where difficulties of logical explanation or some mystery surround the loss or ` +\n    `damage to property. It would seem to be inconsistent with the broad protective purposes of ` +\n    `\"all-risks\" insurance to impose on the insured, as Insurer would have us do, the burden of ` +\n    `proving precise cause of loss or damage.`\n  );\n  parts.push('');\n  parts.push('citing Morrison Grain Co. v. Utica Mutual Insurance Co., 632 F.2d 424 (5th Cir.1980).');\n  parts.push('');\n\n  for (const item of matchedDefenses) {\n    if (item.matched && item.responseText) {\n      parts.push(item.responseText);\n    } else {\n      parts.push(`[UNMATCHED - NEEDS LAWYER REVIEW] As to Defendant's ${item.ordinal} Affirmative Defense:`);\n      parts.push(`Original defense text: \"${item.rawText.substring(0, 200)}...\"`);\n      parts.push(`Suggested category: ${item.suggestedCategory || 'None'}`);\n    }\n    parts.push('');\n  }\n  return parts.join('\\n');\n}\n\n// ============================================================\n// MAIN PIPELINE\n// ============================================================\n\nconst caseMetadata = parseCaseMetadata(answerText);\nconst incomingDefenses = splitAffirmativeDefenses(answerText);\n\nconst results = [];\nconst usedCategories = new Set();\nconst noDedup = ['DEFAULT', 'UNMATCHED', 'No further Coverage', 'SET OFF'];\n\nfor (const incoming of incomingDefenses) {\n  const classification = classifyDefense(incoming.rawText);\n\n  if (usedCategories.has(classification.category) && !noDedup.includes(classification.category)) {\n    classification.originalCategory = classification.category;\n    classification.category = 'DEFAULT';\n    classification.confidence = 0.7;\n  }\n\n  const match = matchToDatabase(classification, defenseList);\n  usedCategories.add(classification.originalCategory || classification.category);\n\n  let responseText = null;\n  if (match.matched) {\n    responseText = personalizeDefenseText(\n      match.defense.defense_text,\n      incoming.defenseNumber,\n      caseMetadata\n    );\n  }\n\n  results.push({\n    defenseNumber: incoming.defenseNumber,\n    ordinal: incoming.ordinal,\n    rawText: incoming.rawText,\n    matched: match.matched,\n    matchedCategory: match.matched ? match.defense.categories?.name : null,\n    suggestedCategory: classification.category,\n    confidence: classification.confidence,\n    responseText,\n    flagged: !match.matched,\n  });\n}\n\nconst reply = assembleReply(caseMetadata, results);\n\nconst matched = results.filter(r => r.matched).length;\nconst flagged = results.filter(r => r.flagged).length;\n\nreturn [{\n  json: {\n    caseMetadata,\n    summary: {\n      totalDefenses: results.length,\n      matched,\n      flagged,\n    },\n    results,\n    reply,\n  }\n}];\n"
+      },
+      "id": "process-pipeline",
+      "name": "Process Answer Pipeline",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "respond-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [960, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Fetch DB Defenses",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch DB Defenses": {
+      "main": [
+        [
+          {
+            "node": "Process Answer Pipeline",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Answer Pipeline": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0
+}

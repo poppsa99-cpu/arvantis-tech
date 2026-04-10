@@ -1,0 +1,151 @@
+{
+  "name": "Motion to Compel - Extract Fields",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "motion-to-compel",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "node-webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "motion-to-compel"
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = $input.first().json.body?.text || $input.first().json.text || '';\n\nif (!text) {\n  throw new Error('No text provided in request body');\n}\n\nconst prompt = `You are a legal document parser. Extract the following information from this legal email/document and return it as JSON.\n\nDo NOT invent or hallucinate any information. If a field is unclear or missing, return null for that field.\n\nDOCUMENT TEXT:\n${text}\n\nRETURN ONLY VALID JSON — no markdown, no explanation, no code blocks. Just the raw JSON object:\n\n{\n  \"plaintiffNames\": [\"PLAINTIFF FULL NAME IN ALL CAPS\"],\n  \"defendantName\": \"DEFENDANT FULL NAME IN ALL CAPS\",\n  \"caseNumber\": \"case number string e.g. 2024-CA-004395\",\n  \"circuitNumber\": \"e.g. 15th\",\n  \"county\": \"COUNTY NAME IN ALL CAPS e.g. PALM BEACH\",\n  \"corporateRepName\": \"Full name of the corporate representative already deposed\",\n  \"corporateRepDepositionDate\": \"Spelled out date e.g. January 20, 2025\",\n  \"targets\": [\n    {\n      \"targetName\": \"Full name in Title Case e.g. Camilo Rueda\",\n      \"targetTitle\": \"Their title or role e.g. Desk Adjuster or percipient fact witness\",\n      \"targetPronoun\": \"he or she or they\",\n      \"crTestimony\": \"What the corporate representative testified about this person\",\n      \"reasonForCompelling\": \"Why this person has relevant knowledge e.g. she has personal knowledge as to the facts surrounding the roof inspection\"\n    }\n  ]\n}\n\nEXTRACTION RULES:\n- plaintiffNames: Extract ALL plaintiff names in ALL CAPS. If multiple plaintiffs appear joined by AND, split them into separate array entries.\n- defendantName: Usually an insurance company. Return in ALL CAPS.\n- caseNumber: The civil case number, usually formatted like 2024-CA-004395.\n- circuitNumber: The judicial circuit number e.g. 15th, 19th.\n- county: The county name in ALL CAPS e.g. PALM BEACH, MARTIN.\n- corporateRepName + corporateRepDepositionDate: The person who was ALREADY deposed (the Corporate Representative) and when their deposition took place.\n- targets array: One object per person whose deposition is NOW being requested. Do NOT include the corporate rep in this array.\n- targetTitle: Their job title or role at the company. If described as a factual witness, use that description.\n- targetPronoun: Use he/she based on the name if obvious. Default to they if uncertain.\n- crTestimony: The specific testimony given by the corporate rep about this target witness.\n- reasonForCompelling: The reason why compelling this witness is necessary (their relevant knowledge).\n- Dates must be spelled out fully: January 20, 2025 — NOT 01/20/2025.\n- This is always a plain Motion to Compel — never an Amended Motion.`;\n\nreturn [{\n  json: {\n    model: 'claude-haiku-4-5-20251001',\n    max_tokens: 2048,\n    messages: [\n      {\n        role: 'user',\n        content: prompt\n      }\n    ]\n  }\n}];"
+      },
+      "id": "node-build-prompt",
+      "name": "Build Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "node-claude",
+      "name": "Call Claude API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst content = response.content?.[0]?.text || '';\n\nif (!content) {\n  throw new Error('Empty response from Claude API');\n}\n\nlet parsed;\ntry {\n  // Strip markdown code blocks if Claude wrapped the JSON\n  const clean = content\n    .replace(/^```json\\s*/i, '')\n    .replace(/^```\\s*/i, '')\n    .replace(/\\s*```$/i, '')\n    .trim();\n  parsed = JSON.parse(clean);\n} catch (e) {\n  throw new Error('Failed to parse AI response as JSON. Raw response: ' + content.substring(0, 300));\n}\n\n// Validate required fields\nif (!parsed.plaintiffNames || !Array.isArray(parsed.plaintiffNames) || parsed.plaintiffNames.length === 0) {\n  throw new Error('No plaintiff names found in document');\n}\nif (!parsed.targets || !Array.isArray(parsed.targets) || parsed.targets.length === 0) {\n  throw new Error('No deposition targets found in document');\n}\n\n// Ensure all target pronouns are valid\nparsed.targets = parsed.targets.map(t => ({\n  ...t,\n  targetPronoun: ['he', 'she', 'they'].includes(t.targetPronoun) ? t.targetPronoun : 'they'\n}));\n\nreturn [{ json: parsed }];"
+      },
+      "id": "node-parse",
+      "name": "Parse & Validate JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "node-respond",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"error\": $execution.lastNodeExecuted + ': ' + $('node-respond').params }",
+        "options": {
+          "responseCode": 422
+        }
+      },
+      "id": "node-error",
+      "name": "Error Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1120, 500]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Build Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Prompt": {
+      "main": [
+        [
+          {
+            "node": "Call Claude API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Claude API": {
+      "main": [
+        [
+          {
+            "node": "Parse & Validate JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse & Validate JSON": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveExecutionProgress": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2026-03-23T00:00:00.000Z",
+  "versionId": "1"
+}
