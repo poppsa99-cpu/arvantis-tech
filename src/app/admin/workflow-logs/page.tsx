@@ -351,7 +351,7 @@ export default function WorkflowLogsPage() {
                           </div>
 
                           {/* Error Message */}
-                          {log.status === 'error' && log.error_message && (
+                          {log.status === 'error' && log.error_message ? (
                             <div>
                               <div className="flex items-center justify-between mb-1">
                                 <h4 className="text-xs font-medium text-red-400 uppercase tracking-wider">
@@ -368,10 +368,10 @@ export default function WorkflowLogsPage() {
                                 {String(log.error_message)}
                               </div>
                             </div>
-                          )}
+                          ) : null}
 
                           {/* Raw Text (the original document) */}
-                          {log.raw_text && (
+                          {log.raw_text ? (
                             <div>
                               <div className="flex items-center justify-between mb-1">
                                 <h4 className="text-xs font-medium text-[var(--admin-text-dim)] uppercase tracking-wider">
@@ -399,10 +399,10 @@ export default function WorkflowLogsPage() {
                                 </button>
                               )}
                             </div>
-                          )}
+                          ) : null}
 
                           {/* n8n Response */}
-                          {log.n8n_response && (
+                          {log.n8n_response ? (
                             <div>
                               <div className="flex items-center justify-between mb-1">
                                 <h4 className="text-xs font-medium text-[var(--admin-text-dim)] uppercase tracking-wider">
@@ -419,7 +419,7 @@ export default function WorkflowLogsPage() {
                                 {JSON.stringify(log.n8n_response, null, 2)}
                               </pre>
                             </div>
-                          )}
+                          ) : null}
 
                           {/* Retry Button for errors */}
                           {log.status === 'error' && (
