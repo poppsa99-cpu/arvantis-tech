@@ -77,7 +77,31 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: `Processing failed: ${errText}` }, { status: 502 })
   }
 
-  const result = await n8nRes.json()
+  const rawResult = await n8nRes.json()
+
+  // n8n may return an unexpected shape (e.g. a different workflow's output).
+  // Ensure we have the expected ProcessResult structure before proceeding.
+  const result = Array.isArray(rawResult) ? rawResult[0] : rawResult
+  if (!result || typeof result !== 'object' || (!result.caseMetadata && !result.results)) {
+    const errorMsg = 'n8n returned an unexpected response format'
+    console.error(errorMsg, JSON.stringify(result).slice(0, 500))
+    logEvent({ userId: user.id, event: 'process_error', workflow: 'motion-to-strike', error: errorMsg, durationMs: Date.now() - startTime, metadata: { textLength: text.length, fileName } })
+
+    if (docRecordId) {
+      await adminSupabase.from('processed_documents').update({
+        status: 'error',
+        error_message: errorMsg,
+        n8n_response: rawResult,
+      }).eq('id', docRecordId).then(() => {})
+    }
+
+    return NextResponse.json({ error: 'Processing returned an unexpected result. Please try again.' }, { status: 502 })
+  }
+
+  // Ensure required structure exists with safe defaults
+  if (!result.caseMetadata) result.caseMetadata = {}
+  if (!result.summary) result.summary = { totalDefenses: result.results?.length || 0, matched: 0, flagged: 0 }
+  if (!result.results) result.results = []
 
   // Fallback: extract case metadata from raw text if n8n didn't find it
   if (result.caseMetadata) {
